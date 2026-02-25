@@ -1,67 +1,64 @@
 # PRVW — PR Review Viewer
 
-GitHub PR の diff を取得し、構造化し、LLMで修正意図ごとにグルーピングしてレビューしやすくするためのdiffビューワ。
+A desktop diff viewer that fetches GitHub PRs, structures diffs into hunks, and uses LLM (Codex CLI) to group changes by intent — so you can review one purpose at a time.
 
-## スタック
+Built with **Tauri v2 + React + TypeScript + Rust**.
 
-| ツール | 用途 | インストール |
-|--------|------|-------------|
-| **Node.js** (v18+) | フロントビルド | https://nodejs.org/ |
-| **Rust** (stable) | バックエンド | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
-| **GitHub CLI (`gh`)** | PR一覧・diff取得 | `brew install gh` |
-| **Codex CLI (`codex`)** | Intent分析（任意） | https://github.com/openai/codex |
+## Stack
 
-## セットアップ
+| Tool | Role | Install |
+|------|------|---------|
+| **Node.js** (v18+) | Frontend build | https://nodejs.org/ |
+| **Rust** (stable) | Backend | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **GitHub CLI (`gh`)** | PR list & diff | `brew install gh` |
+| **Codex CLI (`codex`)** | Intent analysis (optional) | https://github.com/openai/codex |
+
+## Setup
 
 ```bash
-# 1. 依存インストール
 npm install
-
-# 2. gh の認証
 gh auth login
-
-# 3. Codex の認証（Intent分析を使う場合）
-codex login
+codex login   # optional — only needed for intent analysis
 ```
 
-## 開発サーバー起動
+## Development
 
 ```bash
 npm run tauri dev
 ```
 
-## 使い方
+## Usage
 
-1. ヘッダーの入力欄にリポジトリ名（例: `facebook/react`）を入力し「Fetch PRs」をクリック
-2. PR一覧が表示されるのでクリックして選択 → diff が取得・パースされ中央ペインに表示
-3. 左ペインの「Run Codex Analysis」をクリック → Codex が hunk を修正意図ごとにグルーピング
-4. グループをクリックすると中央ペインがそのグループの hunk だけに絞り込まれ、右ペインにサマリーが表示
-5. チェックボックスでレビュー済みマーク（セッション中のみ）
+1. Enter a repo (e.g. `facebook/react`) and click **Fetch PRs**
+2. Select a PR — diff is fetched, parsed, and displayed in the center pane
+3. Click **Run Codex** — hunks are grouped by change intent
+4. Click a group to filter the diff; summary, rationale, and checklists appear in the right pane
+5. Check off groups as you review them
 
-## トラブルシューティング
+## Troubleshooting
 
-| 症状 | 対処 |
-|------|------|
-| `gh is not installed` | `brew install gh` でインストール |
-| `gh is not authenticated` | `gh auth login` を実行 |
-| `Codex CLI is not installed` | Codex をインストール（Intent分析なしでも diff 表示は可能） |
-| `Codex CLI is not authenticated` | `codex login` を実行 |
-| diff が空 | PR に変更がない場合。ブランチ比較を確認 |
-| Analysis validation error | Codex の出力が不正。再実行で解決することが多い |
+| Error | Fix |
+|-------|-----|
+| `gh is not installed` | `brew install gh` |
+| `gh is not authenticated` | Run `gh auth login` |
+| `Codex CLI is not installed` | Install Codex (diff viewing works without it) |
+| `Codex CLI is not authenticated` | Run `codex login` |
+| Empty diff | PR has no changes — check branch comparison |
+| Analysis validation error | Codex output was malformed — retry usually fixes it |
 
-## プロジェクト構成
+## Project Structure
 
 ```
 prvw/
-├── src/                    # フロントエンド (React + TS)
-│   ├── App.tsx             # メインUI（3ペインレイアウト）
-│   ├── App.css             # スタイル
-│   ├── types.ts            # TypeScript型定義
-│   └── main.tsx            # エントリーポイント
-├── src-tauri/              # バックエンド (Rust)
+├── src/                    # Frontend (React + TS)
+│   ├── App.tsx             # Main UI — 3-pane layout
+│   ├── App.css             # Styles
+│   ├── types.ts            # TypeScript type definitions
+│   └── main.tsx            # Entry point
+├── src-tauri/              # Backend (Rust)
 │   └── src/
-│       ├── lib.rs          # Tauriアプリ初期化
-│       └── commands.rs     # コマンド実装（gh/codex呼び出し、diffパース）
+│       ├── lib.rs          # Tauri app init
+│       └── commands.rs     # Commands (gh/codex subprocess, diff parser)
 ├── index.html
 └── package.json
 ```
