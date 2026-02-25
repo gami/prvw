@@ -1,9 +1,8 @@
 # PRVW — PR Review Viewer
 
-Tauri v2 + React + TypeScript + Rust のデスクトップアプリ。
-GitHub PR の diff を取得し、hunk 単位に構造化し、LLM（Codex CLI）で修正意図ごとにグルーピングしてレビューを支援する。
+GitHub PR の diff を取得し、構造化し、LLMで修正意図ごとにグルーピングしてレビューしやすくするためのdiffビューワ。
 
-## 依存
+## スタック
 
 | ツール | 用途 | インストール |
 |--------|------|-------------|
@@ -30,8 +29,6 @@ codex login
 ```bash
 npm run tauri dev
 ```
-
-初回はRustのコンパイルに数分かかります。2回目以降は差分コンパイルで高速です。
 
 ## 使い方
 
