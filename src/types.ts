@@ -53,3 +53,13 @@ export interface AnalysisResult {
   unassignedHunkIds: string[];
   questions: string[];
 }
+
+export interface AnalysisResponse {
+  result: AnalysisResult;
+  codexLog: string;
+}
+
+export interface SplitResponse {
+  hunks: Hunk[];
+  codexLog: string;
+}

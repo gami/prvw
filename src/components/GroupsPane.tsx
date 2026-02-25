@@ -1,0 +1,125 @@
+import type { Hunk, AnalysisResult } from "../types";
+import { UNASSIGNED_GROUP_ID } from "../constants";
+
+interface Props {
+  hunks: Hunk[];
+  analysis: AnalysisResult | null;
+  selectedGroupId: string | null;
+  reviewedGroups: Set<string>;
+  codexModel: string;
+  lang: string;
+  loading: boolean;
+  onSelectGroup: (id: string | null) => void;
+  onToggleReviewed: (id: string) => void;
+  onSetCodexModel: (v: string) => void;
+  onSetLang: (v: string) => void;
+  onRunAnalysis: () => void;
+  onBack: () => void;
+}
+
+const riskColor = (risk: string) => {
+  switch (risk) {
+    case "high": return "#e74c3c";
+    case "medium": return "#f39c12";
+    case "low": return "#27ae60";
+    default: return "#888";
+  }
+};
+
+export function GroupsPane({
+  hunks,
+  analysis,
+  selectedGroupId,
+  reviewedGroups,
+  codexModel,
+  lang,
+  loading,
+  onSelectGroup,
+  onToggleReviewed,
+  onSetCodexModel,
+  onSetLang,
+  onRunAnalysis,
+  onBack,
+}: Props) {
+  return (
+    <div className="pane pane-left">
+      <div className="pane-header">
+        <h3>Intent Groups</h3>
+        <div className="model-row">
+          <input
+            className="input model-input"
+            placeholder="model (empty=config)"
+            value={codexModel}
+            onChange={(e) => onSetCodexModel(e.target.value)}
+          />
+          <input
+            className="input lang-input"
+            placeholder="lang"
+            value={lang}
+            onChange={(e) => onSetLang(e.target.value)}
+          />
+          <button
+            className="btn btn-accent"
+            onClick={onRunAnalysis}
+            disabled={loading || hunks.length === 0}
+          >
+            Run
+          </button>
+        </div>
+        <button className="btn btn-ghost" onClick={onBack}>
+          ← Back
+        </button>
+      </div>
+      {!analysis && hunks.length > 0 && (
+        <p className="hint">
+          {hunks.length} hunks loaded. Click "Run" to group by intent.
+        </p>
+      )}
+      {analysis && (
+        <div className="groups-list">
+          <div
+            className={`group-item ${selectedGroupId === null ? "active" : ""}`}
+            onClick={() => onSelectGroup(null)}
+          >
+            <span className="group-title">All ({hunks.length} hunks)</span>
+          </div>
+          {analysis.groups.map((g) => (
+            <div
+              key={g.id}
+              className={`group-item ${selectedGroupId === g.id ? "active" : ""} ${reviewedGroups.has(g.id) ? "reviewed" : ""}`}
+              onClick={() => onSelectGroup(g.id)}
+            >
+              <label className="group-check" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={reviewedGroups.has(g.id)}
+                  onChange={() => onToggleReviewed(g.id)}
+                />
+              </label>
+              <div className="group-info">
+                <span className="group-title">{g.title}</span>
+                <span className="group-meta">
+                  <span className="risk-badge" style={{ color: riskColor(g.risk) }}>
+                    {g.risk}
+                  </span>
+                  {" · "}
+                  {g.hunkIds.length} hunks
+                </span>
+              </div>
+            </div>
+          ))}
+          {analysis.unassignedHunkIds.length > 0 && (
+            <div
+              className={`group-item ${selectedGroupId === UNASSIGNED_GROUP_ID ? "active" : ""}`}
+              onClick={() => onSelectGroup(UNASSIGNED_GROUP_ID)}
+            >
+              <span className="group-title unassigned">
+                Unassigned ({analysis.unassignedHunkIds.length} hunks)
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
