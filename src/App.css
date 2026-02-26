@@ -6,16 +6,16 @@
 }
 
 :root {
-  --bg: #1a1a2e;
-  --bg-surface: #16213e;
-  --bg-hover: #1f3460;
-  --bg-active: #0f3460;
-  --text: #e0e0e0;
-  --text-muted: #888;
-  --border: #2a2a4a;
-  --accent: #4a9eff;
-  --accent-hover: #6ab4ff;
-  --danger: #e74c3c;
+  --bg: #0D0D0D;
+  --bg-surface: #1a1a1a;
+  --bg-hover: #2a2a2a;
+  --bg-active: #333333;
+  --text: #F2F2F2;
+  --text-muted: #777;
+  --border: #2a2a2a;
+  --accent: #F2505D;
+  --accent-hover: #F20519;
+  --danger: #F20505;
   --success: #27ae60;
   --warning: #f39c12;
 
@@ -167,7 +167,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  background: #3d1111;
+  background: #2d1111;
   border-bottom: 1px solid var(--danger);
   color: #f99;
   font-size: 12px;
@@ -176,7 +176,7 @@ body {
 
 .loading-bar {
   padding: 6px 12px;
-  background: #112233;
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--accent);
   color: var(--accent);
   font-size: 12px;
@@ -358,7 +358,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  background: #1e2a3a;
+  background: var(--bg-surface);
   cursor: pointer;
   user-select: none;
   position: sticky;
@@ -368,7 +368,7 @@ body {
 }
 
 .file-header:hover {
-  background: #253548;
+  background: var(--bg-hover);
 }
 
 .file-chevron {
@@ -506,7 +506,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 4px 10px 4px 30px;
-  background: #1a2744;
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   font-size: 11px;
 }
@@ -569,7 +569,7 @@ body {
   width: 45px;
   text-align: right;
   padding-right: 8px;
-  color: #555;
+  color: var(--text-muted);
   user-select: none;
   flex-shrink: 0;
   font-size: 11px;
@@ -671,7 +671,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #444;
+  background: var(--border);
 }
 
 /* ── Codex Log ── */
