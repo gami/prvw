@@ -4,6 +4,8 @@ A desktop diff viewer that fetches GitHub PRs, structures diffs into hunks, and 
 
 Built with **Tauri v2 + React + TypeScript + Rust**.
 
+![PRVW Screenshot](docs/screenshot.png)
+
 ## Stack
 
 | Tool | Role | Install |
@@ -51,14 +53,28 @@ npm run tauri dev
 ```
 prvw/
 ├── src/                    # Frontend (React + TS)
-│   ├── App.tsx             # Main UI — 3-pane layout
+│   ├── App.tsx             # Main shell — header, routing, state
 │   ├── App.css             # Styles
 │   ├── types.ts            # TypeScript type definitions
-│   └── main.tsx            # Entry point
+│   ├── constants.ts        # Shared constants
+│   ├── components/         # UI components
+│   │   ├── PrList.tsx      # PR list table
+│   │   ├── GroupsPane.tsx  # Left pane — intent groups
+│   │   ├── DiffPane.tsx    # Center pane — diff view
+│   │   └── SummaryPane.tsx # Right pane — summary / AI comments
+│   ├── hooks/
+│   │   └── useAnalysis.ts  # Codex analysis + refine logic
+│   └── utils/
+│       └── classifyFile.ts # File category classification
 ├── src-tauri/              # Backend (Rust)
+│   ├── schemas/            # JSON schemas for Codex output
 │   └── src/
 │       ├── lib.rs          # Tauri app init
-│       └── commands.rs     # Commands (gh/codex subprocess, diff parser)
+│       ├── types.rs        # Shared structs
+│       ├── gh.rs           # GitHub CLI commands
+│       ├── diff_parser.rs  # Unified diff parser
+│       ├── codex.rs        # Codex CLI commands (analyze, refine)
+│       └── validation.rs   # Analysis result validation
 ├── index.html
 └── package.json
 ```

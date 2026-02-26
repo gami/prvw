@@ -2,12 +2,11 @@ use std::collections::HashSet;
 use std::process::Command;
 use std::time::Instant;
 
-use crate::types::{AnalysisResponse, AnalysisResult, Hunk, SplitResponse, SplitResult};
+use crate::types::{AnalysisResponse, AnalysisResult, Hunk, RefineResponse, RefineResult};
 use crate::validation::validate_analysis;
 
-const HUNK_LINE_THRESHOLD: usize = 100;
 const ANALYSIS_SCHEMA: &str = include_str!("../schemas/analysis.json");
-const SPLIT_SCHEMA: &str = include_str!("../schemas/split.json");
+const REFINE_SCHEMA: &str = include_str!("../schemas/refine.json");
 
 fn codex_env() -> Vec<(&'static str, &'static str)> {
     vec![
@@ -189,52 +188,50 @@ pub async fn analyze_intents_with_codex(
 }
 
 #[tauri::command]
-pub async fn split_large_hunks(
+pub async fn refine_group(
     hunks_json: String,
+    group_id: String,
+    group_title: String,
+    hunk_ids: Vec<String>,
     model: Option<String>,
     lang: Option<String>,
-) -> Result<SplitResponse, String> {
-    let hunks: Vec<Hunk> =
+) -> Result<RefineResponse, String> {
+    let all_hunks: Vec<Hunk> =
         serde_json::from_str(&hunks_json).map_err(|e| format!("Invalid hunks JSON: {}", e))?;
 
-    let large_hunks: Vec<&Hunk> = hunks
+    let hunk_id_set: HashSet<String> = hunk_ids.into_iter().collect();
+    let group_hunks: Vec<&Hunk> = all_hunks
         .iter()
-        .filter(|h| h.lines.len() > HUNK_LINE_THRESHOLD)
+        .filter(|h| hunk_id_set.contains(&h.id))
         .collect();
 
-    if large_hunks.is_empty() {
-        return Ok(SplitResponse {
-            hunks,
-            codex_log: String::new(),
-        });
+    if group_hunks.is_empty() {
+        return Err("No hunks found for this group.".to_string());
     }
 
     let temp_dir =
         tempfile::tempdir().map_err(|e| format!("Failed to create temp directory: {}", e))?;
     let temp_path = temp_dir.path();
 
-    // Write large hunks
-    let large_json = serde_json::to_string(&large_hunks)
-        .map_err(|e| format!("Failed to serialize large hunks: {}", e))?;
-    std::fs::write(temp_path.join("large_hunks.json"), &large_json)
-        .map_err(|e| format!("Failed to write large_hunks.json: {}", e))?;
+    let group_hunks_json = serde_json::to_string(&group_hunks)
+        .map_err(|e| format!("Failed to serialize group hunks: {}", e))?;
+    std::fs::write(temp_path.join("hunks.json"), &group_hunks_json)
+        .map_err(|e| format!("Failed to write hunks.json: {}", e))?;
 
-    // Write schema
-    let schema_path = temp_path.join("split_schema.json");
-    std::fs::write(&schema_path, SPLIT_SCHEMA)
-        .map_err(|e| format!("Failed to write split_schema.json: {}", e))?;
+    let schema_path = temp_path.join("schema.json");
+    std::fs::write(&schema_path, REFINE_SCHEMA)
+        .map_err(|e| format!("Failed to write schema.json: {}", e))?;
 
-    let output_path = temp_path.join("split_result.json");
+    let output_path = temp_path.join("refine.json");
 
     let prompt = format!(
-        "Read large_hunks.json. Each hunk has an id, filePath, and a lines array. \
-         For each hunk, split it into semantic sub-hunks by change purpose. \
-         Each sub-hunk must be a contiguous range of lines (0-based indices, endLineIndex is exclusive). \
-         Sub-hunk ids must be \"<originalId>.1\", \"<originalId>.2\", etc. \
-         The sub-hunks must cover all lines of the original hunk with no gaps or overlaps. \
-         Give each sub-hunk a short descriptive title. \
-         Output must match the schema.{}",
-        lang_suffix(&lang)
+        "Read hunks.json. These hunks all belong to a single intent group titled \"{}\". \
+         Split them into smaller, more focused sub-groups by specific change purpose. \
+         Use only existing hunk ids from the input. Do not invent ids. \
+         Sub-group ids must be \"{}.1\", \"{}.2\", etc. \
+         Order sub-groups by logical processing flow. \
+         Give each sub-group a clear, descriptive title.{}",
+        group_title, group_id, group_id, lang_suffix(&lang)
     );
 
     let args = build_codex_args(
@@ -248,68 +245,42 @@ pub async fn split_large_hunks(
     let codex_output = run_codex(&args)?;
 
     let result_str = std::fs::read_to_string(&output_path)
-        .map_err(|e| format!("Failed to read split_result.json: {}", e))?;
-    let split_result: SplitResult = serde_json::from_str(&result_str)
-        .map_err(|e| format!("Failed to parse split_result.json: {}", e))?;
+        .map_err(|e| format!("Failed to read refine.json: {}. Codex may not have produced output.", e))?;
 
-    // Apply splits
-    let split_ids: HashSet<String> = split_result
-        .splits
-        .iter()
-        .map(|s| s.original_hunk_id.clone())
-        .collect();
+    let refine_result: RefineResult = serde_json::from_str(&result_str)
+        .map_err(|e| format!("Failed to parse refine.json: {}", e))?;
 
-    let mut result_hunks: Vec<Hunk> = Vec::new();
-
-    for hunk in &hunks {
-        if split_ids.contains(&hunk.id) {
-            let entry = split_result
-                .splits
-                .iter()
-                .find(|s| s.original_hunk_id == hunk.id)
-                .unwrap();
-
-            for sub in &entry.sub_hunks {
-                let start = sub.start_line_index.min(hunk.lines.len());
-                let end = sub.end_line_index.min(hunk.lines.len());
-                if start >= end {
-                    continue;
-                }
-                let sub_lines = hunk.lines[start..end].to_vec();
-
-                let old_start = sub_lines
-                    .iter()
-                    .find_map(|l| l.old_line)
-                    .unwrap_or(hunk.old_start);
-                let new_start = sub_lines
-                    .iter()
-                    .find_map(|l| l.new_line)
-                    .unwrap_or(hunk.new_start);
-                let old_count = sub_lines.iter().filter(|l| l.kind != "add").count() as u32;
-                let new_count = sub_lines.iter().filter(|l| l.kind != "remove").count() as u32;
-
-                result_hunks.push(Hunk {
-                    id: sub.id.clone(),
-                    file_path: hunk.file_path.clone(),
-                    header: format!(
-                        "@@ -{},{} +{},{} @@ [{}]",
-                        old_start, old_count, new_start, new_count, sub.title
-                    ),
-                    old_start,
-                    old_lines: old_count,
-                    new_start,
-                    new_lines: new_count,
-                    lines: sub_lines,
-                });
+    // Validate: strip invalid hunk IDs
+    let mut warnings: Vec<String> = Vec::new();
+    let mut cleaned_groups = refine_result.groups;
+    for g in &mut cleaned_groups {
+        let before = g.hunk_ids.len();
+        g.hunk_ids.retain(|id| {
+            if hunk_id_set.contains(id) {
+                true
+            } else {
+                warnings.push(format!("Removed non-existent hunk id '{}' from sub-group '{}'", id, g.title));
+                false
             }
-        } else {
-            result_hunks.push(hunk.clone());
+        });
+        if g.hunk_ids.len() != before {
+            warnings.push(format!("Sub-group '{}': {} -> {} hunks", g.title, before, g.hunk_ids.len()));
+        }
+    }
+    cleaned_groups.retain(|g| !g.hunk_ids.is_empty());
+
+    let mut log = build_log("refine", &codex_output);
+    log.push_str(&format!("[refine] group=\"{}\" sub-groups={}\n", group_title, cleaned_groups.len()));
+    if !warnings.is_empty() {
+        log.push_str("--- validation warnings ---\n");
+        for w in &warnings {
+            log.push_str(w);
+            log.push('\n');
         }
     }
 
-    let codex_log = build_log("split", &codex_output);
-    Ok(SplitResponse {
-        hunks: result_hunks,
-        codex_log,
+    Ok(RefineResponse {
+        sub_groups: cleaned_groups,
+        codex_log: log,
     })
 }

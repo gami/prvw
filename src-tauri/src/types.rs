@@ -83,32 +83,17 @@ pub struct AnalysisResponse {
     pub codex_log: String,
 }
 
+/// Response for refine_group command.
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct SplitResponse {
-    pub hunks: Vec<Hunk>,
+pub struct RefineResponse {
+    pub sub_groups: Vec<IntentGroup>,
     pub codex_log: String,
 }
 
-// Split-specific types (internal to codex module)
-#[derive(Debug, Serialize, Deserialize)]
+/// Codex output shape for refine (same structure as analysis but only groups).
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SplitResult {
-    pub splits: Vec<SplitEntry>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SplitEntry {
-    pub original_hunk_id: String,
-    pub sub_hunks: Vec<SubHunkRange>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SubHunkRange {
-    pub id: String,
-    pub title: String,
-    pub start_line_index: usize,
-    pub end_line_index: usize, // exclusive
+pub struct RefineResult {
+    pub groups: Vec<IntentGroup>,
 }

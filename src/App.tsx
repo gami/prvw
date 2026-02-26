@@ -10,9 +10,28 @@ import { DiffPane } from "./components/DiffPane";
 import { SummaryPane } from "./components/SummaryPane";
 import "./App.css";
 
+const REPO_HISTORY_KEY = "prvw:repoHistory";
+const REPO_HISTORY_MAX = 20;
+
+function loadRepoHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(REPO_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRepoToHistory(repo: string) {
+  const history = loadRepoHistory().filter((r) => r !== repo);
+  history.unshift(repo);
+  localStorage.setItem(REPO_HISTORY_KEY, JSON.stringify(history.slice(0, REPO_HISTORY_MAX)));
+}
+
 function App() {
   // ── State ──
   const [repo, setRepo] = useState(() => localStorage.getItem("prvw:repo") ?? "");
+  const [repoHistory, setRepoHistory] = useState(loadRepoHistory);
   const [search, setSearch] = useState("");
   const [prs, setPrs] = useState<PrListItem[]>([]);
   const [selectedPr, setSelectedPr] = useState<PrListItem | null>(null);
@@ -24,11 +43,10 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
 
-  const { analysis, codexLog, runAnalysis, resetAnalysis } = useAnalysis({
+  const { analysis, codexLog, runAnalysis, refineGroup, resetAnalysis } = useAnalysis({
     hunks,
     codexModel,
     lang,
-    setHunks,
     setError,
     setLoading,
   });
@@ -75,6 +93,8 @@ function App() {
       });
       setPrs(items);
       localStorage.setItem("prvw:repo", repo.trim());
+      saveRepoToHistory(repo.trim());
+      setRepoHistory(loadRepoHistory());
       setSelectedPr(null);
       setHunks([]);
       resetAnalysis();
@@ -138,10 +158,16 @@ function App() {
           <input
             className="input repo-input"
             placeholder="owner/repo"
+            list="repo-history"
             value={repo}
             onChange={(e) => setRepo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && fetchPrs()}
           />
+          <datalist id="repo-history">
+            {repoHistory.map((r) => (
+              <option key={r} value={r} />
+            ))}
+          </datalist>
           <input
             className="input search-input"
             placeholder="Search PRs (optional)"
@@ -205,6 +231,7 @@ function App() {
             onSetCodexModel={setCodexModel}
             onSetLang={setLang}
             onRunAnalysis={runAnalysis}
+            onRefineGroup={refineGroup}
             onBack={goBackToList}
           />
           <DiffPane

@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "properties": {
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "rationale": { "type": "string" },
+          "risk": { "type": "string", "enum": ["low", "medium", "high"] },
+          "hunkIds": { "type": "array", "items": { "type": "string" } },
+          "reviewerChecklist": { "type": "array", "items": { "type": "string" } },
+          "suggestedTests": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "title", "rationale", "risk", "hunkIds", "reviewerChecklist", "suggestedTests"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["groups"],
+  "additionalProperties": false
+}

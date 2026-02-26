@@ -16,8 +16,6 @@
   --accent: #F2505D;
   --accent-hover: #F20519;
   --danger: #F20505;
-  --success: #27ae60;
-  --warning: #f39c12;
 
   font-family: "SF Mono", "Fira Code", "Cascadia Code", Menlo, monospace;
   font-size: 13px;
@@ -484,6 +482,26 @@ body {
   color: var(--text-muted);
 }
 
+.btn-refine {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.btn-refine:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.btn-refine:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .risk-badge {
   font-weight: 600;
   text-transform: uppercase;
@@ -521,13 +539,6 @@ body {
   flex-shrink: 0;
 }
 
-.hunk-file {
-  color: var(--accent);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 .hunk-range {
   color: var(--text-muted);
@@ -678,10 +689,10 @@ body {
 .codex-log-toggle {
   cursor: pointer;
   user-select: none;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 .codex-log-toggle:hover {
-  color: var(--fg);
+  color: var(--text);
 }
 .codex-log {
   margin-top: 0.5rem;
@@ -695,5 +706,5 @@ body {
   word-break: break-all;
   max-height: 300px;
   overflow-y: auto;
-  color: var(--muted);
+  color: var(--text-muted);
 }

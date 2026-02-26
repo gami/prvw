@@ -33,7 +33,6 @@ export interface Hunk {
 
 export interface ParsedDiff {
   hunks: Hunk[];
-  raw: string;
 }
 
 export interface IntentGroup {
@@ -59,7 +58,7 @@ export interface AnalysisResponse {
   codexLog: string;
 }
 
-export interface SplitResponse {
-  hunks: Hunk[];
+export interface RefineResponse {
+  subGroups: IntentGroup[];
   codexLog: string;
 }

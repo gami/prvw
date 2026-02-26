@@ -12,8 +12,8 @@ pub fn run() {
             gh::list_prs,
             gh::get_pr_diff,
             diff_parser::parse_diff,
-            codex::split_large_hunks,
             codex::analyze_intents_with_codex,
+            codex::refine_group,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -9,6 +9,8 @@ export function classifyFile(filePath: string): FileCategory {
     p.includes("__generated__") ||
     p.includes("/gen/") ||
     p.startsWith("gen/") ||
+    p.includes("/api/out/") ||
+    p.startsWith("api/out/") ||
     base === "package-lock.json" ||
     base === "yarn.lock" ||
     base === "pnpm-lock.yaml" ||

@@ -1,4 +1,4 @@
-import type { Hunk, AnalysisResult } from "../types";
+import type { Hunk, AnalysisResult, IntentGroup } from "../types";
 import { UNASSIGNED_GROUP_ID } from "../constants";
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
   onSetCodexModel: (v: string) => void;
   onSetLang: (v: string) => void;
   onRunAnalysis: () => void;
+  onRefineGroup: (group: IntentGroup) => void;
   onBack: () => void;
 }
 
@@ -39,6 +40,7 @@ export function GroupsPane({
   onSetCodexModel,
   onSetLang,
   onRunAnalysis,
+  onRefineGroup,
   onBack,
 }: Props) {
   return (
@@ -104,6 +106,16 @@ export function GroupsPane({
                   </span>
                   {" · "}
                   {g.hunkIds.length} hunks
+                  <button
+                    className="btn-refine"
+                    disabled={loading}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRefineGroup(g);
+                    }}
+                  >
+                    Refine
+                  </button>
                 </span>
               </div>
             </div>
