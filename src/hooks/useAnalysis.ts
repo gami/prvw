@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import type { Hunk, AnalysisResult, AnalysisResponse, IntentGroup, RefineResponse } from "../types";
+import type { Hunk, AnalysisResult, IntentGroup } from "../types";
+import { analyzeIntents, refineGroupApi } from "./useCodexApi";
 
 interface UseAnalysisOptions {
   hunks: Hunk[];
@@ -32,11 +32,7 @@ export function useAnalysis({
 
     setLoading("Running intent analysis with Codex... (this may take a minute)");
     try {
-      const res = await invoke<AnalysisResponse>("analyze_intents_with_codex", {
-        hunksJson: JSON.stringify(hunks),
-        model: codexModel.trim() || null,
-        lang: lang.trim() || null,
-      });
+      const res = await analyzeIntents(hunks, codexModel, lang);
       setAnalysis(res.result);
       setCodexLog(res.codexLog);
     } catch (e) {
@@ -50,14 +46,7 @@ export function useAnalysis({
     setError(null);
     setLoading(`Refining "${group.title}"...`);
     try {
-      const res = await invoke<RefineResponse>("refine_group", {
-        hunksJson: JSON.stringify(hunks),
-        groupId: group.id,
-        groupTitle: group.title,
-        hunkIds: group.hunkIds,
-        model: codexModel.trim() || null,
-        lang: lang.trim() || null,
-      });
+      const res = await refineGroupApi(hunks, group, codexModel, lang);
 
       if (!analysis) return;
 

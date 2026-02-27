@@ -2,6 +2,22 @@ use std::collections::HashSet;
 
 use crate::types::AnalysisResult;
 
+/// Validate that a repo string is in "owner/repo" format.
+pub fn validate_repo(repo: &str) -> Result<(), String> {
+    let parts: Vec<&str> = repo.split('/').collect();
+    if parts.len() != 2
+        || parts[0].is_empty()
+        || parts[1].is_empty()
+        || parts.iter().any(|p| p.contains(|c: char| c.is_whitespace()))
+    {
+        return Err(format!(
+            "Invalid repo format: '{}'. Expected 'owner/repo'.",
+            repo
+        ));
+    }
+    Ok(())
+}
+
 pub struct ValidationResult {
     pub cleaned: AnalysisResult,
     pub warnings: Vec<String>,

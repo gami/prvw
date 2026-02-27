@@ -1,123 +1,11 @@
 use std::collections::HashSet;
-use std::process::Command;
-use std::time::Instant;
 
+use crate::codex_runner::{self, lang_suffix};
 use crate::types::{AnalysisResponse, AnalysisResult, Hunk, RefineResponse, RefineResult};
 use crate::validation::validate_analysis;
 
 const ANALYSIS_SCHEMA: &str = include_str!("../schemas/analysis.json");
 const REFINE_SCHEMA: &str = include_str!("../schemas/refine.json");
-
-fn codex_env() -> Vec<(&'static str, &'static str)> {
-    vec![
-        ("GH_PAGER", "cat"),
-        ("PAGER", "cat"),
-        ("NO_COLOR", "1"),
-        ("GH_FORCE_TTY", "0"),
-    ]
-}
-
-fn lang_suffix(lang: &Option<String>) -> String {
-    match lang.as_deref() {
-        Some(l) if !l.trim().is_empty() => format!(" Respond in {}.", l.trim()),
-        _ => String::new(),
-    }
-}
-
-fn build_codex_args(
-    temp_path: &std::path::Path,
-    schema_path: &str,
-    output_path: &str,
-    model: &Option<String>,
-    prompt: String,
-) -> Vec<String> {
-    let mut args = vec![
-        "exec".to_string(),
-        "-C".to_string(),
-        temp_path.to_str().unwrap().to_string(),
-        "--skip-git-repo-check".to_string(),
-        "--full-auto".to_string(),
-        "--sandbox".to_string(),
-        "read-only".to_string(),
-        "--color".to_string(),
-        "never".to_string(),
-        "--output-schema".to_string(),
-        schema_path.to_string(),
-        "-o".to_string(),
-        output_path.to_string(),
-    ];
-
-    if let Some(m) = model {
-        if !m.trim().is_empty() {
-            args.push("-m".to_string());
-            args.push(m.trim().to_string());
-        }
-    }
-
-    args.push(prompt);
-    args
-}
-
-struct CodexOutput {
-    stdout: String,
-    stderr: String,
-    elapsed_secs: f64,
-    model_used: String,
-}
-
-/// Runs Codex CLI and returns stdout, stderr, elapsed time, and model info.
-fn run_codex(args: &[String]) -> Result<CodexOutput, String> {
-    // Extract model from args for logging
-    let model_used = args
-        .windows(2)
-        .find(|w| w[0] == "-m")
-        .map(|w| w[1].clone())
-        .unwrap_or_else(|| "(config default)".to_string());
-
-    let start = Instant::now();
-    let output = Command::new("codex")
-        .args(args)
-        .envs(codex_env())
-        .output()
-        .map_err(|e| {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                "Codex CLI is not installed. Please install it: https://github.com/openai/codex"
-                    .to_string()
-            } else {
-                format!("Failed to execute codex: {}", e)
-            }
-        })?;
-    let elapsed_secs = start.elapsed().as_secs_f64();
-
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-    if !output.status.success() {
-        if stderr.contains("login") || stderr.contains("auth") || stderr.contains("API key") {
-            return Err("Codex CLI is not authenticated. Please run: codex login".to_string());
-        }
-        return Err(format!("Codex exec failed: {}", stderr));
-    }
-    Ok(CodexOutput { stdout, stderr, elapsed_secs, model_used })
-}
-
-fn build_log(label: &str, output: &CodexOutput) -> String {
-    let mut log = format!(
-        "[{}] model={} elapsed={:.1}s\n",
-        label, output.model_used, output.elapsed_secs
-    );
-    if !output.stderr.is_empty() {
-        log.push_str(&output.stderr);
-        log.push('\n');
-    }
-    if !output.stdout.is_empty() {
-        log.push_str(&output.stdout);
-        log.push('\n');
-    }
-    log
-}
-
-// ───── Commands ─────
 
 #[tauri::command]
 pub async fn analyze_intents_with_codex(
@@ -133,20 +21,8 @@ pub async fn analyze_intents_with_codex(
         return Err("No hunks to analyze.".to_string());
     }
 
-    let temp_dir =
-        tempfile::tempdir().map_err(|e| format!("Failed to create temp directory: {}", e))?;
-    let temp_path = temp_dir.path();
-
-    // Write hunks.json
-    std::fs::write(temp_path.join("hunks.json"), &hunks_json)
-        .map_err(|e| format!("Failed to write hunks.json: {}", e))?;
-
-    // Write schema.json
-    let schema_path = temp_path.join("schema.json");
-    std::fs::write(&schema_path, ANALYSIS_SCHEMA)
-        .map_err(|e| format!("Failed to write schema.json: {}", e))?;
-
-    let analysis_path = temp_path.join("analysis.json");
+    let (temp_dir, schema_path, output_path) =
+        codex_runner::prepare_temp_dir(&hunks_json, ANALYSIS_SCHEMA, "analysis.json")?;
 
     let prompt = format!(
         "Read hunks.json and group hunks by change intent for PR review. \
@@ -157,17 +33,17 @@ pub async fn analyze_intents_with_codex(
         lang_suffix(&lang)
     );
 
-    let args = build_codex_args(
-        temp_path,
+    let args = codex_runner::build_args(
+        temp_dir.path(),
         schema_path.to_str().unwrap(),
-        analysis_path.to_str().unwrap(),
+        output_path.to_str().unwrap(),
         &model,
         prompt,
     );
 
-    let codex_output = run_codex(&args)?;
+    let codex_output = codex_runner::run(&args)?;
 
-    let analysis_str = std::fs::read_to_string(&analysis_path)
+    let analysis_str = std::fs::read_to_string(&output_path)
         .map_err(|e| format!("Failed to read analysis.json: {}. Codex may not have produced output.", e))?;
 
     let result: AnalysisResult = serde_json::from_str(&analysis_str)
@@ -175,7 +51,7 @@ pub async fn analyze_intents_with_codex(
 
     let validation = validate_analysis(&result, &valid_ids);
 
-    let mut log = build_log("analysis", &codex_output);
+    let mut log = codex_runner::build_log("analysis", &codex_output);
     log.push_str(&format!("[analysis] hunks={} groups={}\n", valid_ids.len(), validation.cleaned.groups.len()));
     if !validation.warnings.is_empty() {
         log.push_str("--- validation warnings ---\n");
@@ -209,20 +85,11 @@ pub async fn refine_group(
         return Err("No hunks found for this group.".to_string());
     }
 
-    let temp_dir =
-        tempfile::tempdir().map_err(|e| format!("Failed to create temp directory: {}", e))?;
-    let temp_path = temp_dir.path();
-
     let group_hunks_json = serde_json::to_string(&group_hunks)
         .map_err(|e| format!("Failed to serialize group hunks: {}", e))?;
-    std::fs::write(temp_path.join("hunks.json"), &group_hunks_json)
-        .map_err(|e| format!("Failed to write hunks.json: {}", e))?;
 
-    let schema_path = temp_path.join("schema.json");
-    std::fs::write(&schema_path, REFINE_SCHEMA)
-        .map_err(|e| format!("Failed to write schema.json: {}", e))?;
-
-    let output_path = temp_path.join("refine.json");
+    let (temp_dir, schema_path, output_path) =
+        codex_runner::prepare_temp_dir(&group_hunks_json, REFINE_SCHEMA, "refine.json")?;
 
     let prompt = format!(
         "Read hunks.json. These hunks all belong to a single intent group titled \"{}\". \
@@ -234,15 +101,15 @@ pub async fn refine_group(
         group_title, group_id, group_id, lang_suffix(&lang)
     );
 
-    let args = build_codex_args(
-        temp_path,
+    let args = codex_runner::build_args(
+        temp_dir.path(),
         schema_path.to_str().unwrap(),
         output_path.to_str().unwrap(),
         &model,
         prompt,
     );
 
-    let codex_output = run_codex(&args)?;
+    let codex_output = codex_runner::run(&args)?;
 
     let result_str = std::fs::read_to_string(&output_path)
         .map_err(|e| format!("Failed to read refine.json: {}. Codex may not have produced output.", e))?;
@@ -269,7 +136,7 @@ pub async fn refine_group(
     }
     cleaned_groups.retain(|g| !g.hunk_ids.is_empty());
 
-    let mut log = build_log("refine", &codex_output);
+    let mut log = codex_runner::build_log("refine", &codex_output);
     log.push_str(&format!("[refine] group=\"{}\" sub-groups={}\n", group_title, cleaned_groups.len()));
     if !warnings.is_empty() {
         log.push_str("--- validation warnings ---\n");

@@ -1,6 +1,7 @@
 use std::process::Command;
 
-use crate::types::{PrListItem};
+use crate::types::PrListItem;
+use crate::validation::validate_repo;
 
 fn gh_env() -> Vec<(&'static str, &'static str)> {
     vec![
@@ -9,21 +10,6 @@ fn gh_env() -> Vec<(&'static str, &'static str)> {
         ("NO_COLOR", "1"),
         ("GH_FORCE_TTY", "0"),
     ]
-}
-
-pub fn validate_repo(repo: &str) -> Result<(), String> {
-    let parts: Vec<&str> = repo.split('/').collect();
-    if parts.len() != 2
-        || parts[0].is_empty()
-        || parts[1].is_empty()
-        || parts.iter().any(|p| p.contains(|c: char| c.is_whitespace()))
-    {
-        return Err(format!(
-            "Invalid repo format: '{}'. Expected 'owner/repo'.",
-            repo
-        ));
-    }
-    Ok(())
 }
 
 #[tauri::command]
