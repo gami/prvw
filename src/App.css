@@ -95,7 +95,7 @@ body {
   border-color: var(--accent);
 }
 
-.repo-input { width: 200px; }
+.repo-input { width: 328px; }
 .search-input { width: 180px; }
 .model-input { flex: 1; min-width: 0; font-size: 11px; }
 .lang-input { width: 48px; font-size: 11px; text-align: center; flex-shrink: 0; }
