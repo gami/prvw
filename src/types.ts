@@ -36,9 +36,12 @@ export interface ParsedDiff {
   hunks: Hunk[];
 }
 
+export type GroupCategory = "schema" | "logic" | "api" | "ui" | "test" | "config" | "docs" | "refactor" | "other";
+
 export interface IntentGroup {
   id: string;
   title: string;
+  category: GroupCategory;
   rationale: string;
   risk: "low" | "medium" | "high";
   hunkIds: string[];

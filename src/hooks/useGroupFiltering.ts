@@ -1,10 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Hunk, AnalysisResult, IntentGroup } from "../types";
 import { UNASSIGNED_GROUP_ID } from "../constants";
 
 export function useGroupFiltering(hunks: Hunk[], analysis: AnalysisResult | null) {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [reviewedGroups, setReviewedGroups] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (analysis && analysis.groups.length > 0) {
+      setSelectedGroupId(analysis.groups[0].id);
+    }
+  }, [analysis]);
 
   const selectedGroup: IntentGroup | null = useMemo(() => {
     if (!analysis || !selectedGroupId) return null;

@@ -38,7 +38,6 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
     return hunks.filter((h) => {
       if (hideTests && classifyFile(h.filePath) === "test") return false;
       if (hiddenExts.has(getFileExtension(h.filePath))) return false;
-      if (substantiveOnly && hasNonSubstantive && nonSubstantiveHunkIds.has(h.id)) return false;
       return true;
     });
   }, [hunks, hideTests, hiddenExts, substantiveOnly, hasNonSubstantive, nonSubstantiveHunkIds]);
@@ -105,7 +104,7 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
           {hasNonSubstantive && (
             <>
               <span className="filter-sep" />
-              <label className={`filter-toggle ${substantiveOnly ? "" : "off"}`}>
+              <label className={`filter-toggle ${substantiveOnly ? "filter-active" : "off"}`}>
                 <input
                   type="checkbox"
                   checked={substantiveOnly}
@@ -119,7 +118,8 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
       </div>
       <div className="diff-view">
         {fileGroups.map(({ filePath, hunks: fileHunks }) => {
-          const collapsed = collapsedFiles.has(filePath);
+          const allCosmetic = substantiveOnly && hasNonSubstantive && fileHunks.every((h) => nonSubstantiveHunkIds.has(h.id));
+          const collapsed = collapsedFiles.has(filePath) || allCosmetic;
           const adds = fileHunks.reduce(
             (n, h) => n + h.lines.filter((l) => l.kind === "add").length,
             0,
@@ -150,28 +150,32 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
               {!collapsed &&
                 fileHunks.map((hunk) => {
                   const isCosmetic = nonSubstantiveHunkIds.has(hunk.id);
+                  const cosmeticCollapsed = isCosmetic && substantiveOnly;
                   return (
                     <div
                       key={hunk.id}
                       className="hunk-block"
-                      style={isCosmetic && !substantiveOnly ? { opacity: 0.4 } : undefined}
+                      style={cosmeticCollapsed ? { opacity: 0.5 } : undefined}
                     >
                       <div className="hunk-header">
                         <span className={`hunk-id${isCosmetic ? " hunk-id-cosmetic" : ""}`}>{hunk.id}</span>
                         <span className="hunk-range">{hunk.header}</span>
+                        {cosmeticCollapsed && <span className="cosmetic-badge">cosmetic</span>}
                       </div>
-                      <pre className="hunk-code">
-                        {hunk.lines.map((line, i) => (
-                          <div key={i} className={`diff-line diff-${line.kind}`}>
-                            <span className="line-num old">{line.oldLine ?? " "}</span>
-                            <span className="line-num new">{line.newLine ?? " "}</span>
-                            <span className="line-prefix">
-                              {line.kind === "add" ? "+" : line.kind === "remove" ? "-" : " "}
-                            </span>
-                            <span className="line-text">{line.text}</span>
-                          </div>
-                        ))}
-                      </pre>
+                      {!cosmeticCollapsed && (
+                        <pre className="hunk-code">
+                          {hunk.lines.map((line, i) => (
+                            <div key={i} className={`diff-line diff-${line.kind}`}>
+                              <span className="line-num old">{line.oldLine ?? " "}</span>
+                              <span className="line-num new">{line.newLine ?? " "}</span>
+                              <span className="line-prefix">
+                                {line.kind === "add" ? "+" : line.kind === "remove" ? "-" : " "}
+                              </span>
+                              <span className="line-text">{line.text}</span>
+                            </div>
+                          ))}
+                        </pre>
+                      )}
                     </div>
                   );
                 })}

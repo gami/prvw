@@ -60,6 +60,8 @@ pub struct ParsedDiff {
 pub struct IntentGroup {
     pub id: String,
     pub title: String,
+    #[serde(default)]
+    pub category: String,
     pub rationale: String,
     pub risk: String,
     pub hunk_ids: Vec<String>,

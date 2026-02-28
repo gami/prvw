@@ -48,7 +48,12 @@ pub async fn analyze_intents_with_codex(
 
     let pr_context = match pr_body.as_deref() {
         Some(body) if !body.trim().is_empty() => {
-            let truncated = if body.len() > 2000 { &body[..2000] } else { body };
+            let truncated = if body.len() > 2000 {
+                let end = body.floor_char_boundary(2000);
+                &body[..end]
+            } else {
+                body
+            };
             format!(" The PR description is: \"{}\".", truncated)
         }
         _ => String::new(),
@@ -61,6 +66,7 @@ pub async fn analyze_intents_with_codex(
          Order the groups array by logical processing flow \
          (e.g. data model / schema first, then business logic, then API / controller, then UI, then tests, then config). \
          Give each group a clear, descriptive title that serves as a section heading for reviewers. \
+         Assign each group a category from: schema, logic, api, ui, test, config, docs, refactor, other. \
          For overallSummary, write a concise reviewer-facing summary of WHAT the PR changes and WHY. \
          Do NOT mention hunks, hunks.json, grouping process, or analysis internals — write as if summarizing the PR itself. \
          Also classify each hunk as substantive or non-substantive. \

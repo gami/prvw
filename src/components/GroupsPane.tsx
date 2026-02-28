@@ -110,9 +110,11 @@ export function GroupsPane({
               <div className="group-info">
                 <span className="group-title">{g.title}</span>
                 <span className="group-meta">
-                  <span className="risk-badge" style={{ color: riskColor(g.risk) }}>
-                    {g.risk}
-                  </span>
+                  {g.category && (
+                    <span className="category-badge" style={{ borderColor: riskColor(g.risk), color: riskColor(g.risk) }}>
+                      {g.category}
+                    </span>
+                  )}
                   {" · "}
                   {g.hunkIds.length} hunks
                   {(() => {

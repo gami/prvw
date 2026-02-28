@@ -76,7 +76,7 @@ export function SettingsModal({
           <div className="modal-field">
             <label className="modal-label">Cache{cacheSize != null ? ` (${cacheSize})` : ""}</label>
             <button
-              className="btn btn-ghost"
+              className="btn btn-accent"
               onClick={handleClearCache}
               disabled={clearing}
               style={{ alignSelf: "flex-start" }}

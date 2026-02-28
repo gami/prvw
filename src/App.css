@@ -380,6 +380,11 @@ body {
   border-color: var(--accent);
 }
 
+.filter-toggle.filter-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .filter-toggle.off {
   opacity: 0.4;
   text-decoration: line-through;
@@ -567,6 +572,18 @@ body {
 .btn-refine:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.category-badge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 0 4px;
+  border-radius: 3px;
+  margin-right: 4px;
 }
 
 .risk-badge {
