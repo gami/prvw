@@ -104,5 +104,26 @@ pub fn validate_analysis(
         cleaned.unassigned_hunk_ids.extend(missing);
     }
 
+    // Clean nonSubstantiveHunkIds: remove invalid IDs
+    let original_ns_len = cleaned.non_substantive_hunk_ids.len();
+    cleaned.non_substantive_hunk_ids.retain(|hid| {
+        if valid_ids.contains(hid) {
+            true
+        } else {
+            warnings.push(format!(
+                "Removed non-existent non-substantive hunk id '{}'",
+                hid
+            ));
+            false
+        }
+    });
+    if cleaned.non_substantive_hunk_ids.len() != original_ns_len {
+        warnings.push(format!(
+            "nonSubstantiveHunkIds: {} -> {} after cleanup",
+            original_ns_len,
+            cleaned.non_substantive_hunk_ids.len()
+        ));
+    }
+
     ValidationResult { cleaned, warnings }
 }

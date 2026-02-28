@@ -1,5 +1,6 @@
 use std::process::Command;
 
+use crate::cache;
 use crate::types::PrListItem;
 use crate::validation::validate_repo;
 
@@ -71,8 +72,19 @@ pub async fn list_prs(
 }
 
 #[tauri::command]
-pub async fn get_pr_diff(repo: String, pr_number: u32) -> Result<String, String> {
+pub async fn get_pr_diff(app: tauri::AppHandle, repo: String, pr_number: u32) -> Result<String, String> {
+    use tauri::Manager;
     validate_repo(&repo)?;
+
+    let app_data_dir = app.path().app_data_dir().ok();
+    let cache_key = format!("{}__{}", repo.replace('/', "__"), pr_number);
+
+    // Check cache
+    if let Some(ref dir) = app_data_dir {
+        if let Some(cached) = cache::read_cache::<String>(dir, "cache/diff", &cache_key) {
+            return Ok(cached);
+        }
+    }
 
     let output = Command::new("gh")
         .args([
@@ -104,5 +116,11 @@ pub async fn get_pr_diff(repo: String, pr_number: u32) -> Result<String, String>
     if diff.trim().is_empty() {
         return Err("Diff is empty. The PR may have no changes.".to_string());
     }
+
+    // Write cache
+    if let Some(ref dir) = app_data_dir {
+        cache::write_cache(dir, "cache/diff", &cache_key, &diff);
+    }
+
     Ok(diff)
 }

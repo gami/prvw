@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::cache;
 use crate::codex_runner::{self, lang_suffix};
 use crate::types::{AnalysisResponse, AnalysisResult, Hunk, RefineResponse, RefineResult};
 use crate::validation::validate_analysis;
@@ -9,10 +10,14 @@ const REFINE_SCHEMA: &str = include_str!("../schemas/refine.json");
 
 #[tauri::command]
 pub async fn analyze_intents_with_codex(
+    app: tauri::AppHandle,
     hunks_json: String,
     model: Option<String>,
     lang: Option<String>,
+    force: Option<bool>,
 ) -> Result<AnalysisResponse, String> {
+    use tauri::Manager;
+
     let hunks: Vec<Hunk> =
         serde_json::from_str(&hunks_json).map_err(|e| format!("Invalid hunks JSON: {}", e))?;
     let valid_ids: HashSet<String> = hunks.iter().map(|h| h.id.clone()).collect();
@@ -21,15 +26,37 @@ pub async fn analyze_intents_with_codex(
         return Err("No hunks to analyze.".to_string());
     }
 
+    let app_data_dir = app.path().app_data_dir().ok();
+    let model_str = model.as_deref().unwrap_or("");
+    let lang_str = lang.as_deref().unwrap_or("");
+    let cache_key = cache::hash_key(&format!("{}\n{}\n{}", hunks_json, model_str, lang_str));
+
+    // Check cache (unless force)
+    if force != Some(true) {
+        if let Some(ref dir) = app_data_dir {
+            if let Some(mut cached) = cache::read_cache::<AnalysisResponse>(dir, "cache/analysis", &cache_key) {
+                cached.from_cache = true;
+                return Ok(cached);
+            }
+        }
+    }
+
     let (temp_dir, schema_path, output_path) =
         codex_runner::prepare_temp_dir(&hunks_json, ANALYSIS_SCHEMA, "analysis.json")?;
 
     let prompt = format!(
-        "Read hunks.json and group hunks by change intent for PR review. \
+        "Read hunks.json which contains {} hunks and group ALL of them by change intent for PR review. \
+         Every single hunk must be assigned to exactly one group — do not leave any hunk unassigned. \
          Use only existing hunk ids. Output must match the schema. Do not invent ids. \
          Order the groups array by logical processing flow \
          (e.g. data model / schema first, then business logic, then API / controller, then UI, then tests, then config). \
-         Give each group a clear, descriptive title that serves as a section heading for reviewers.{}",
+         Give each group a clear, descriptive title that serves as a section heading for reviewers. \
+         Also classify each hunk as substantive or non-substantive. \
+         Non-substantive changes are: formatting/whitespace-only changes, code moved to another file without modification, \
+         indentation changes, lock file updates, auto-generated code changes, snapshot updates. \
+         Note: variable/function renames and comment changes ARE substantive. \
+         List non-substantive hunk IDs in nonSubstantiveHunkIds.{}",
+        valid_ids.len(),
         lang_suffix(&lang)
     );
 
@@ -60,18 +87,30 @@ pub async fn analyze_intents_with_codex(
             log.push('\n');
         }
     }
-    Ok(AnalysisResponse { result: validation.cleaned, codex_log: log })
+
+    let response = AnalysisResponse { result: validation.cleaned, codex_log: log, from_cache: false };
+
+    // Write cache
+    if let Some(ref dir) = app_data_dir {
+        cache::write_cache(dir, "cache/analysis", &cache_key, &response);
+    }
+
+    Ok(response)
 }
 
 #[tauri::command]
 pub async fn refine_group(
+    app: tauri::AppHandle,
     hunks_json: String,
     group_id: String,
     group_title: String,
     hunk_ids: Vec<String>,
     model: Option<String>,
     lang: Option<String>,
+    force: Option<bool>,
 ) -> Result<RefineResponse, String> {
+    use tauri::Manager;
+
     let all_hunks: Vec<Hunk> =
         serde_json::from_str(&hunks_json).map_err(|e| format!("Invalid hunks JSON: {}", e))?;
 
@@ -87,6 +126,21 @@ pub async fn refine_group(
 
     let group_hunks_json = serde_json::to_string(&group_hunks)
         .map_err(|e| format!("Failed to serialize group hunks: {}", e))?;
+
+    let app_data_dir = app.path().app_data_dir().ok();
+    let model_str = model.as_deref().unwrap_or("");
+    let lang_str = lang.as_deref().unwrap_or("");
+    let cache_key = cache::hash_key(&format!("{}\n{}\n{}\n{}", group_hunks_json, group_id, model_str, lang_str));
+
+    // Check cache (unless force)
+    if force != Some(true) {
+        if let Some(ref dir) = app_data_dir {
+            if let Some(mut cached) = cache::read_cache::<RefineResponse>(dir, "cache/refine", &cache_key) {
+                cached.from_cache = true;
+                return Ok(cached);
+            }
+        }
+    }
 
     let (temp_dir, schema_path, output_path) =
         codex_runner::prepare_temp_dir(&group_hunks_json, REFINE_SCHEMA, "refine.json")?;
@@ -146,8 +200,16 @@ pub async fn refine_group(
         }
     }
 
-    Ok(RefineResponse {
+    let response = RefineResponse {
         sub_groups: cleaned_groups,
         codex_log: log,
-    })
+        from_cache: false,
+    };
+
+    // Write cache
+    if let Some(ref dir) = app_data_dir {
+        cache::write_cache(dir, "cache/refine", &cache_key, &response);
+    }
+
+    Ok(response)
 }

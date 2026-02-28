@@ -21,8 +21,9 @@
       }
     },
     "unassignedHunkIds": { "type": "array", "items": { "type": "string" } },
+    "nonSubstantiveHunkIds": { "type": "array", "items": { "type": "string" } },
     "questions": { "type": "array", "items": { "type": "string" } }
   },
-  "required": ["version", "overallSummary", "groups", "unassignedHunkIds", "questions"],
+  "required": ["version", "overallSummary", "groups", "unassignedHunkIds", "nonSubstantiveHunkIds", "questions"],
   "additionalProperties": false
 }

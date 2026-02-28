@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
 interface Props {
   initialModel: string;
@@ -17,9 +18,27 @@ export function SettingsModal({
 }: Props) {
   const [model, setModel] = useState(initialModel);
   const [lang, setLang] = useState(initialLang || "ja");
+  const [clearing, setClearing] = useState(false);
+  const [cacheSize, setCacheSize] = useState<string | null>(null);
+
+  useEffect(() => {
+    invoke<string>("get_cache_size").then(setCacheSize).catch(() => {});
+  }, []);
 
   function handleSave() {
     onSave({ codexModel: model, lang });
+  }
+
+  async function handleClearCache() {
+    setClearing(true);
+    try {
+      await invoke("clear_cache");
+      setCacheSize("0 B");
+    } catch (e) {
+      alert(`Failed to clear cache: ${e}`);
+    } finally {
+      setClearing(false);
+    }
   }
 
   return (
@@ -53,6 +72,17 @@ export function SettingsModal({
               onChange={(e) => setLang(e.target.value)}
               style={{ width: "100%" }}
             />
+          </div>
+          <div className="modal-field">
+            <label className="modal-label">Cache{cacheSize != null ? ` (${cacheSize})` : ""}</label>
+            <button
+              className="btn btn-ghost"
+              onClick={handleClearCache}
+              disabled={clearing}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {clearing ? "Clearing..." : "Clear Cache"}
+            </button>
           </div>
         </div>
         <div className="modal-footer">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useRepoHistory } from "./hooks/useRepoHistory";
 import { usePrList } from "./hooks/usePrList";
@@ -45,7 +45,7 @@ function App() {
     setLoading,
   });
 
-  const { analysis, codexLog, runAnalysis, refineGroup, resetAnalysis } = useAnalysis({
+  const { analysis, codexLog, fromCache, runAnalysis, refineGroup, resetAnalysis } = useAnalysis({
     hunks,
     codexModel,
     lang,
@@ -62,6 +62,11 @@ function App() {
     toggleReviewed,
     resetFiltering,
   } = useGroupFiltering(hunks, analysis);
+
+  const nonSubstantiveHunkIds = useMemo(
+    () => new Set(analysis?.nonSubstantiveHunkIds ?? []),
+    [analysis],
+  );
 
   // ── Auto-run analysis when hunks are loaded ──
   useEffect(() => {
@@ -124,24 +129,6 @@ function App() {
           </button>
         </div>
         <div className="header-right">
-          {selectedPr && (
-            <>
-              <span className="selected-pr">
-                #{selectedPr.number} {selectedPr.title}
-              </span>
-              <button
-                className="btn btn-ghost"
-                disabled={!selectedPr.url}
-                onClick={() => {
-                  if (selectedPr.url) {
-                    openUrl(selectedPr.url).catch((e) => setError(String(e)));
-                  }
-                }}
-              >
-                Open PR
-              </button>
-            </>
-          )}
           <button
             className="btn-settings"
             title="Settings"
@@ -175,6 +162,8 @@ function App() {
             selectedGroupId={selectedGroupId}
             reviewedGroups={reviewedGroups}
             loading={!!loading}
+            nonSubstantiveHunkIds={nonSubstantiveHunkIds}
+            fromCache={fromCache}
             onSelectGroup={setSelectedGroupId}
             onToggleReviewed={toggleReviewed}
             onRunAnalysis={runAnalysis}
@@ -185,11 +174,18 @@ function App() {
             hunks={displayedHunks}
             selectedGroup={selectedGroup}
             selectedGroupId={selectedGroupId}
+            nonSubstantiveHunkIds={nonSubstantiveHunkIds}
           />
           <SummaryPane
+            selectedPr={selectedPr}
             analysis={analysis}
             selectedGroup={selectedGroup}
             codexLog={codexLog}
+            onOpenPr={() => {
+              if (selectedPr?.url) {
+                openUrl(selectedPr.url).catch((e) => setError(String(e)));
+              }
+            }}
           />
         </div>
       )}

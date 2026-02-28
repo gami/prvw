@@ -72,23 +72,28 @@ pub struct AnalysisResult {
     pub overall_summary: String,
     pub groups: Vec<IntentGroup>,
     pub unassigned_hunk_ids: Vec<String>,
+    pub non_substantive_hunk_ids: Vec<String>,
     pub questions: Vec<String>,
 }
 
 /// Wrapper for Codex command results that includes CLI log output.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AnalysisResponse {
     pub result: AnalysisResult,
     pub codex_log: String,
+    #[serde(default)]
+    pub from_cache: bool,
 }
 
 /// Response for refine_group command.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RefineResponse {
     pub sub_groups: Vec<IntentGroup>,
     pub codex_log: String,
+    #[serde(default)]
+    pub from_cache: bool,
 }
 
 /// Codex output shape for refine (same structure as analysis but only groups).

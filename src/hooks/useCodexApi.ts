@@ -5,11 +5,13 @@ export async function analyzeIntents(
   hunks: Hunk[],
   model: string,
   lang: string,
+  force?: boolean,
 ): Promise<AnalysisResponse> {
   return invoke<AnalysisResponse>("analyze_intents_with_codex", {
     hunksJson: JSON.stringify(hunks),
     model: model.trim() || null,
     lang: lang.trim() || null,
+    force: force ?? false,
   });
 }
 
@@ -18,6 +20,7 @@ export async function refineGroupApi(
   group: IntentGroup,
   model: string,
   lang: string,
+  force?: boolean,
 ): Promise<RefineResponse> {
   return invoke<RefineResponse>("refine_group", {
     hunksJson: JSON.stringify(hunks),
@@ -26,5 +29,6 @@ export async function refineGroupApi(
     hunkIds: group.hunkIds,
     model: model.trim() || null,
     lang: lang.trim() || null,
+    force: force ?? false,
   });
 }

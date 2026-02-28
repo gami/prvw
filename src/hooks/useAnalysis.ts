@@ -19,20 +19,27 @@ export function useAnalysis({
 }: UseAnalysisOptions) {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [codexLog, setCodexLog] = useState<string>("");
+  const [fromCache, setFromCache] = useState(false);
 
-  async function runAnalysis() {
+  async function runAnalysis(force?: boolean) {
     setError(null);
     setCodexLog("");
+    setFromCache(false);
     if (hunks.length === 0) {
       setError("No hunks to analyze. Select a PR first.");
       return;
     }
 
-    setLoading("Running intent analysis with Codex... (this may take a minute)");
+    setLoading(
+      force
+        ? "Re-running intent analysis with Codex (bypassing cache)..."
+        : "Running intent analysis with Codex... (this may take a minute)",
+    );
     try {
-      const res = await analyzeIntents(hunks, codexModel, lang);
+      const res = await analyzeIntents(hunks, codexModel, lang, force);
       setAnalysis(res.result);
       setCodexLog(res.codexLog);
+      setFromCache(res.fromCache);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -59,6 +66,7 @@ export function useAnalysis({
       }
       setAnalysis({ ...analysis, groups: newGroups });
       setCodexLog((prev) => prev + "\n" + res.codexLog);
+      if (!res.fromCache) setFromCache(false);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -69,7 +77,8 @@ export function useAnalysis({
   function resetAnalysis() {
     setAnalysis(null);
     setCodexLog("");
+    setFromCache(false);
   }
 
-  return { analysis, codexLog, runAnalysis, refineGroup, resetAnalysis };
+  return { analysis, codexLog, fromCache, runAnalysis, refineGroup, resetAnalysis };
 }

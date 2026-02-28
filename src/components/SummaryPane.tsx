@@ -1,17 +1,57 @@
-import { useState } from "react";
-import type { AnalysisResult, IntentGroup } from "../types";
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
+import type { AnalysisResult, IntentGroup, PrListItem } from "../types";
 
 interface Props {
+  selectedPr: PrListItem | null;
   analysis: AnalysisResult | null;
   selectedGroup: IntentGroup | null;
   codexLog: string;
+  onOpenPr: () => void;
 }
 
-export function SummaryPane({ analysis, selectedGroup, codexLog }: Props) {
+export function SummaryPane({ selectedPr, analysis, selectedGroup, codexLog, onOpenPr }: Props) {
   const [logOpen, setLogOpen] = useState(false);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
+  const titleRef = useRef<HTMLSpanElement>(null);
+
+  function showTooltip() {
+    const el = titleRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+    const rect = el.getBoundingClientRect();
+    setTooltip({ x: rect.left, y: rect.bottom + 4 });
+  }
 
   return (
     <div className="pane pane-right">
+      {selectedPr && (
+        <div className="pr-title-bar">
+          <span
+            ref={titleRef}
+            className="pr-title-text"
+            onMouseEnter={showTooltip}
+            onMouseLeave={() => setTooltip(null)}
+          >
+            #{selectedPr.number} {selectedPr.title}
+          </span>
+          {tooltip && createPortal(
+            <div
+              className="pr-title-tooltip"
+              style={{ left: tooltip.x, top: tooltip.y }}
+            >
+              #{selectedPr.number} {selectedPr.title}
+            </div>,
+            document.body,
+          )}
+          <button
+            className="btn btn-accent btn-open-pr"
+            disabled={!selectedPr.url}
+            onClick={onOpenPr}
+          >
+            Open
+          </button>
+        </div>
+      )}
       {analysis ? (
         <div className="summary-content">
           {/* ── Summary ── */}

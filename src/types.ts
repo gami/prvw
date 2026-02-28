@@ -50,15 +50,18 @@ export interface AnalysisResult {
   overallSummary: string;
   groups: IntentGroup[];
   unassignedHunkIds: string[];
+  nonSubstantiveHunkIds: string[];
   questions: string[];
 }
 
 export interface AnalysisResponse {
   result: AnalysisResult;
   codexLog: string;
+  fromCache: boolean;
 }
 
 export interface RefineResponse {
   subGroups: IntentGroup[];
   codexLog: string;
+  fromCache: boolean;
 }

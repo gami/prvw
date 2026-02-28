@@ -7,9 +7,11 @@ interface Props {
   selectedGroupId: string | null;
   reviewedGroups: Set<string>;
   loading: boolean;
+  nonSubstantiveHunkIds: Set<string>;
+  fromCache: boolean;
   onSelectGroup: (id: string | null) => void;
   onToggleReviewed: (id: string) => void;
-  onRunAnalysis: () => void;
+  onRunAnalysis: (force?: boolean) => void;
   onRefineGroup: (group: IntentGroup) => void;
   onBack: () => void;
 }
@@ -29,6 +31,8 @@ export function GroupsPane({
   selectedGroupId,
   reviewedGroups,
   loading,
+  nonSubstantiveHunkIds,
+  fromCache,
   onSelectGroup,
   onToggleReviewed,
   onRunAnalysis,
@@ -40,13 +44,16 @@ export function GroupsPane({
       <div className="pane-header">
         <div className="pane-header-row" style={{ display: "flex" }}>
           <h3>Intent Groups</h3>
-          <button
-            className="btn btn-accent"
-            onClick={onRunAnalysis}
-            disabled={loading || hunks.length === 0}
-          >
-            {analysis ? "Re-run" : "Run"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {fromCache && <span className="cache-badge">cached</span>}
+            <button
+              className="btn btn-accent"
+              onClick={() => onRunAnalysis(!!analysis)}
+              disabled={loading || hunks.length === 0}
+            >
+              {analysis ? "Re-run" : "Run"}
+            </button>
+          </div>
         </div>
         <button className="btn btn-ghost" onClick={onBack}>
           ← Back
@@ -86,6 +93,10 @@ export function GroupsPane({
                   </span>
                   {" · "}
                   {g.hunkIds.length} hunks
+                  {(() => {
+                    const c = g.hunkIds.filter((id) => nonSubstantiveHunkIds.has(id)).length;
+                    return c > 0 ? ` · ${c} cosmetic` : null;
+                  })()}
                   <button
                     className="btn-refine"
                     disabled={loading}

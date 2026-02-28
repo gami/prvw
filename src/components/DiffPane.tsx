@@ -1,34 +1,47 @@
 import { useState, useMemo } from "react";
 import type { Hunk, IntentGroup } from "../types";
-import type { FileCategory } from "../utils/classifyFile";
-import { classifyFile } from "../utils/classifyFile";
+import { classifyFile, getFileExtension } from "../utils/classifyFile";
 
 interface Props {
   hunks: Hunk[];
   selectedGroup: IntentGroup | null;
   selectedGroupId: string | null;
+  nonSubstantiveHunkIds: Set<string>;
 }
 
-export function DiffPane({ hunks, selectedGroup, selectedGroupId }: Props) {
-  const [fileFilters, setFileFilters] = useState({
-    generated: true,
-    test: true,
-    docs: true,
-    config: true,
-  });
+export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantiveHunkIds }: Props) {
+  const [hideTests, setHideTests] = useState(false);
+  const [hiddenExts, setHiddenExts] = useState<Set<string>>(new Set());
+  const [substantiveOnly, setSubstantiveOnly] = useState(true);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
 
-  function toggleFilter(key: keyof typeof fileFilters) {
-    setFileFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+  const allExtensions = useMemo(() => {
+    const exts = new Set<string>();
+    for (const h of hunks) {
+      exts.add(getFileExtension(h.filePath));
+    }
+    return Array.from(exts).sort();
+  }, [hunks]);
+
+  function toggleExt(ext: string) {
+    setHiddenExts((prev) => {
+      const next = new Set(prev);
+      if (next.has(ext)) next.delete(ext);
+      else next.add(ext);
+      return next;
+    });
   }
+
+  const hasNonSubstantive = nonSubstantiveHunkIds.size > 0;
 
   const filteredHunks = useMemo(() => {
     return hunks.filter((h) => {
-      const cat: FileCategory = classifyFile(h.filePath);
-      if (cat === "src") return true;
-      return fileFilters[cat];
+      if (hideTests && classifyFile(h.filePath) === "test") return false;
+      if (hiddenExts.has(getFileExtension(h.filePath))) return false;
+      if (substantiveOnly && hasNonSubstantive && nonSubstantiveHunkIds.has(h.id)) return false;
+      return true;
     });
-  }, [hunks, fileFilters]);
+  }, [hunks, hideTests, hiddenExts, substantiveOnly, hasNonSubstantive, nonSubstantiveHunkIds]);
 
   const fileGroups = useMemo(() => {
     const map = new Map<string, Hunk[]>();
@@ -71,16 +84,37 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId }: Props) {
           <button className="btn-mini" onClick={expandAll}>Expand all</button>
           <button className="btn-mini" onClick={collapseAll}>Collapse all</button>
           <span className="filter-sep" />
-          {(["generated", "test", "docs", "config"] as const).map((key) => (
-            <label key={key} className={`filter-toggle ${fileFilters[key] ? "" : "off"}`}>
+          <label className={`filter-toggle ${hideTests ? "off" : ""}`}>
+            <input
+              type="checkbox"
+              checked={!hideTests}
+              onChange={() => setHideTests((v) => !v)}
+            />
+            test
+          </label>
+          {allExtensions.map((ext) => (
+            <label key={ext} className={`filter-toggle ${hiddenExts.has(ext) ? "off" : ""}`}>
               <input
                 type="checkbox"
-                checked={fileFilters[key]}
-                onChange={() => toggleFilter(key)}
+                checked={!hiddenExts.has(ext)}
+                onChange={() => toggleExt(ext)}
               />
-              {key}
+              {ext}
             </label>
           ))}
+          {hasNonSubstantive && (
+            <>
+              <span className="filter-sep" />
+              <label className={`filter-toggle ${substantiveOnly ? "" : "off"}`}>
+                <input
+                  type="checkbox"
+                  checked={substantiveOnly}
+                  onChange={() => setSubstantiveOnly((v) => !v)}
+                />
+                substantive
+              </label>
+            </>
+          )}
         </div>
       </div>
       <div className="diff-view">
@@ -94,6 +128,9 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId }: Props) {
             (n, h) => n + h.lines.filter((l) => l.kind === "remove").length,
             0,
           );
+          const cosmeticCount = hasNonSubstantive
+            ? fileHunks.filter((h) => nonSubstantiveHunkIds.has(h.id)).length
+            : 0;
           return (
             <div key={filePath} className="file-group">
               <div className="file-header" onClick={() => toggleFile(filePath)}>
@@ -105,29 +142,39 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId }: Props) {
                 </span>
                 <span className="file-hunk-count">
                   {fileHunks.length} hunk{fileHunks.length !== 1 ? "s" : ""}
+                  {cosmeticCount > 0 && (
+                    <span className="cosmetic-badge"> ({cosmeticCount} cosmetic)</span>
+                  )}
                 </span>
               </div>
               {!collapsed &&
-                fileHunks.map((hunk) => (
-                  <div key={hunk.id} className="hunk-block">
-                    <div className="hunk-header">
-                      <span className="hunk-id">{hunk.id}</span>
-                      <span className="hunk-range">{hunk.header}</span>
+                fileHunks.map((hunk) => {
+                  const isCosmetic = nonSubstantiveHunkIds.has(hunk.id);
+                  return (
+                    <div
+                      key={hunk.id}
+                      className="hunk-block"
+                      style={isCosmetic && !substantiveOnly ? { opacity: 0.4 } : undefined}
+                    >
+                      <div className="hunk-header">
+                        <span className={`hunk-id${isCosmetic ? " hunk-id-cosmetic" : ""}`}>{hunk.id}</span>
+                        <span className="hunk-range">{hunk.header}</span>
+                      </div>
+                      <pre className="hunk-code">
+                        {hunk.lines.map((line, i) => (
+                          <div key={i} className={`diff-line diff-${line.kind}`}>
+                            <span className="line-num old">{line.oldLine ?? " "}</span>
+                            <span className="line-num new">{line.newLine ?? " "}</span>
+                            <span className="line-prefix">
+                              {line.kind === "add" ? "+" : line.kind === "remove" ? "-" : " "}
+                            </span>
+                            <span className="line-text">{line.text}</span>
+                          </div>
+                        ))}
+                      </pre>
                     </div>
-                    <pre className="hunk-code">
-                      {hunk.lines.map((line, i) => (
-                        <div key={i} className={`diff-line diff-${line.kind}`}>
-                          <span className="line-num old">{line.oldLine ?? " "}</span>
-                          <span className="line-num new">{line.newLine ?? " "}</span>
-                          <span className="line-prefix">
-                            {line.kind === "add" ? "+" : line.kind === "remove" ? "-" : " "}
-                          </span>
-                          <span className="line-text">{line.text}</span>
-                        </div>
-                      ))}
-                    </pre>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           );
         })}

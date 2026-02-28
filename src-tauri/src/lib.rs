@@ -1,3 +1,4 @@
+mod cache;
 mod codex;
 mod codex_runner;
 mod diff_parser;
@@ -15,6 +16,8 @@ pub fn run() {
             diff_parser::parse_diff,
             codex::analyze_intents_with_codex,
             codex::refine_group,
+            cache::get_cache_size,
+            cache::clear_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

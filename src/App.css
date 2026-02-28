@@ -607,6 +607,15 @@ body {
 }
 
 
+.hunk-id-cosmetic {
+  background: var(--text-muted);
+}
+
+.cosmetic-badge {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .hunk-range {
   color: var(--text-muted);
   font-size: 10px;
@@ -664,6 +673,52 @@ body {
 
 .line-text {
   white-space: pre;
+}
+
+/* ── PR Title Bar (right pane top) ── */
+.pr-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pr-title-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  cursor: default;
+}
+
+.pr-title-tooltip {
+  position: fixed;
+  z-index: 200;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: normal;
+  word-break: break-word;
+  max-width: 280px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.btn-open-pr {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 3px 10px;
 }
 
 /* ── Summary Pane ── */
@@ -750,6 +805,18 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border);
+}
+
+/* ── Cache Badge ── */
+.cache-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #27ae60;
+  border: 1px solid #27ae60;
+  padding: 1px 6px;
+  border-radius: 3px;
 }
 
 /* ── Codex Log ── */
