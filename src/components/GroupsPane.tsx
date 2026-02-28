@@ -1,12 +1,25 @@
+import { useState, useEffect } from "react";
 import type { Hunk, AnalysisResult, IntentGroup } from "../types";
 import { UNASSIGNED_GROUP_ID } from "../constants";
+
+const SPINNER_FRAMES = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+
+function useSpinner(active: boolean) {
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length), 80);
+    return () => clearInterval(id);
+  }, [active]);
+  return SPINNER_FRAMES[frame];
+}
 
 interface Props {
   hunks: Hunk[];
   analysis: AnalysisResult | null;
   selectedGroupId: string | null;
   reviewedGroups: Set<string>;
-  loading: boolean;
+  loadingMessage: string | null;
   nonSubstantiveHunkIds: Set<string>;
   fromCache: boolean;
   onSelectGroup: (id: string | null) => void;
@@ -30,7 +43,7 @@ export function GroupsPane({
   analysis,
   selectedGroupId,
   reviewedGroups,
-  loading,
+  loadingMessage,
   nonSubstantiveHunkIds,
   fromCache,
   onSelectGroup,
@@ -39,6 +52,9 @@ export function GroupsPane({
   onRefineGroup,
   onBack,
 }: Props) {
+  const loading = !!loadingMessage;
+  const spinner = useSpinner(loading);
+
   return (
     <div className="pane pane-left">
       <div className="pane-header">
@@ -59,7 +75,13 @@ export function GroupsPane({
           ← Back
         </button>
       </div>
-      {!analysis && hunks.length > 0 && (
+      {loading && (
+        <div className="spinner-bar">
+          <span className="spinner-char">{spinner}</span>
+          <span className="spinner-text">{loadingMessage}</span>
+        </div>
+      )}
+      {!analysis && !loading && hunks.length > 0 && (
         <p className="hint">
           {hunks.length} hunks loaded. Click "Run" to group by intent.
         </p>

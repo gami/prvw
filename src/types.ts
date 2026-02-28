@@ -11,6 +11,7 @@ export interface PrListItem {
   headRefName: string | null;
   baseRefName: string | null;
   reviewDecision: string | null;
+  body: string | null;
 }
 
 export interface DiffLine {

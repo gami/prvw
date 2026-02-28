@@ -807,6 +807,27 @@ body {
   background: var(--border);
 }
 
+/* ── Spinner Bar ── */
+.spinner-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.spinner-char {
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.spinner-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Cache Badge ── */
 .cache-badge {
   font-size: 10px;

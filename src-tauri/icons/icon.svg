@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="40" fill="#0D0D0D"/>
+  <text x="256" y="230" text-anchor="middle" font-family="SF Mono, SFMono-Regular, Menlo, monospace" font-weight="700" font-size="240" fill="#F2505D">PR</text>
+  <text x="256" y="440" text-anchor="middle" font-family="SF Mono, SFMono-Regular, Menlo, monospace" font-weight="700" font-size="220" fill="#F2505D">VW</text>
+</svg>

@@ -22,6 +22,8 @@ pub struct PrListItem {
     pub base_ref_name: Option<String>,
     #[serde(default)]
     pub review_decision: Option<String>,
+    #[serde(default)]
+    pub body: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

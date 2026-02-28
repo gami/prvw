@@ -47,6 +47,7 @@ function App() {
 
   const { analysis, codexLog, fromCache, runAnalysis, refineGroup, resetAnalysis } = useAnalysis({
     hunks,
+    prBody: selectedPr?.body ?? null,
     codexModel,
     lang,
     setError,
@@ -161,7 +162,7 @@ function App() {
             analysis={analysis}
             selectedGroupId={selectedGroupId}
             reviewedGroups={reviewedGroups}
-            loading={!!loading}
+            loadingMessage={loading}
             nonSubstantiveHunkIds={nonSubstantiveHunkIds}
             fromCache={fromCache}
             onSelectGroup={setSelectedGroupId}

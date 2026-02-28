@@ -6,9 +6,11 @@ export async function analyzeIntents(
   model: string,
   lang: string,
   force?: boolean,
+  prBody?: string | null,
 ): Promise<AnalysisResponse> {
   return invoke<AnalysisResponse>("analyze_intents_with_codex", {
     hunksJson: JSON.stringify(hunks),
+    prBody: prBody || null,
     model: model.trim() || null,
     lang: lang.trim() || null,
     force: force ?? false,

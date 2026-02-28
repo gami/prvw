@@ -4,6 +4,7 @@ import { analyzeIntents, refineGroupApi } from "./useCodexApi";
 
 interface UseAnalysisOptions {
   hunks: Hunk[];
+  prBody: string | null;
   codexModel: string;
   lang: string;
   setError: (error: string | null) => void;
@@ -12,6 +13,7 @@ interface UseAnalysisOptions {
 
 export function useAnalysis({
   hunks,
+  prBody,
   codexModel,
   lang,
   setError,
@@ -36,7 +38,7 @@ export function useAnalysis({
         : "Running intent analysis with Codex... (this may take a minute)",
     );
     try {
-      const res = await analyzeIntents(hunks, codexModel, lang, force);
+      const res = await analyzeIntents(hunks, codexModel, lang, force, prBody);
       setAnalysis(res.result);
       setCodexLog(res.codexLog);
       setFromCache(res.fromCache);

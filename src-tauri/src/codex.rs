@@ -12,6 +12,7 @@ const REFINE_SCHEMA: &str = include_str!("../schemas/refine.json");
 pub async fn analyze_intents_with_codex(
     app: tauri::AppHandle,
     hunks_json: String,
+    pr_body: Option<String>,
     model: Option<String>,
     lang: Option<String>,
     force: Option<bool>,
@@ -29,7 +30,8 @@ pub async fn analyze_intents_with_codex(
     let app_data_dir = app.path().app_data_dir().ok();
     let model_str = model.as_deref().unwrap_or("");
     let lang_str = lang.as_deref().unwrap_or("");
-    let cache_key = cache::hash_key(&format!("{}\n{}\n{}", hunks_json, model_str, lang_str));
+    let pr_body_str = pr_body.as_deref().unwrap_or("");
+    let cache_key = cache::hash_key(&format!("{}\n{}\n{}\n{}", hunks_json, pr_body_str, model_str, lang_str));
 
     // Check cache (unless force)
     if force != Some(true) {
@@ -44,19 +46,30 @@ pub async fn analyze_intents_with_codex(
     let (temp_dir, schema_path, output_path) =
         codex_runner::prepare_temp_dir(&hunks_json, ANALYSIS_SCHEMA, "analysis.json")?;
 
+    let pr_context = match pr_body.as_deref() {
+        Some(body) if !body.trim().is_empty() => {
+            let truncated = if body.len() > 2000 { &body[..2000] } else { body };
+            format!(" The PR description is: \"{}\".", truncated)
+        }
+        _ => String::new(),
+    };
+
     let prompt = format!(
-        "Read hunks.json which contains {} hunks and group ALL of them by change intent for PR review. \
+        "Read hunks.json which contains {} hunks and group ALL of them by change intent for PR review.{} \
          Every single hunk must be assigned to exactly one group — do not leave any hunk unassigned. \
          Use only existing hunk ids. Output must match the schema. Do not invent ids. \
          Order the groups array by logical processing flow \
          (e.g. data model / schema first, then business logic, then API / controller, then UI, then tests, then config). \
          Give each group a clear, descriptive title that serves as a section heading for reviewers. \
+         For overallSummary, write a concise reviewer-facing summary of WHAT the PR changes and WHY. \
+         Do NOT mention hunks, hunks.json, grouping process, or analysis internals — write as if summarizing the PR itself. \
          Also classify each hunk as substantive or non-substantive. \
          Non-substantive changes are: formatting/whitespace-only changes, code moved to another file without modification, \
          indentation changes, lock file updates, auto-generated code changes, snapshot updates. \
          Note: variable/function renames and comment changes ARE substantive. \
          List non-substantive hunk IDs in nonSubstantiveHunkIds.{}",
         valid_ids.len(),
+        pr_context,
         lang_suffix(&lang)
     );
 
