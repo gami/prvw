@@ -1,23 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useRepoHistory } from "./hooks/useRepoHistory";
 import { usePrList } from "./hooks/usePrList";
 import { usePrDiff } from "./hooks/usePrDiff";
 import { useAnalysis } from "./hooks/useAnalysis";
+import { useSettings } from "./hooks/useSettings";
 import { useGroupFiltering } from "./hooks/useGroupFiltering";
 import { PrList } from "./components/PrList";
 import { GroupsPane } from "./components/GroupsPane";
 import { DiffPane } from "./components/DiffPane";
 import { SummaryPane } from "./components/SummaryPane";
+import { SettingsModal } from "./components/SettingsModal";
 import "./App.css";
 
 function App() {
   // ── Global UI state ──
   const [search, setSearch] = useState("");
-  const [codexModel, setCodexModel] = useState(() => localStorage.getItem("prvw:codexModel") ?? "");
-  const [lang, setLang] = useState(() => localStorage.getItem("prvw:lang") ?? "ja");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // ── Settings ──
+  const { codexModel, lang, hasSettings, saveSettings } = useSettings();
+  const autoRunTriggered = useRef(false);
 
   // ── Hooks ──
   const { repo, setRepo, repoHistory, persistRepo } = useRepoHistory();
@@ -58,14 +63,30 @@ function App() {
     resetFiltering,
   } = useGroupFiltering(hunks, analysis);
 
+  // ── Auto-run analysis when hunks are loaded ──
+  useEffect(() => {
+    if (
+      hunks.length > 0 &&
+      !analysis &&
+      !loading &&
+      hasSettings &&
+      !autoRunTriggered.current
+    ) {
+      autoRunTriggered.current = true;
+      runAnalysis();
+    }
+  }, [hunks, analysis, loading, hasSettings]);
+
   // ── Handlers ──
   function handleSelectPr(pr: typeof prs[number]) {
+    autoRunTriggered.current = false;
     resetAnalysis();
     resetFiltering();
     rawSelectPr(pr);
   }
 
   function goBackToList() {
+    autoRunTriggered.current = false;
     clearSelection();
     resetAnalysis();
     resetFiltering();
@@ -121,6 +142,13 @@ function App() {
               </button>
             </>
           )}
+          <button
+            className="btn-settings"
+            title="Settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            &#9881;
+          </button>
         </div>
       </header>
 
@@ -146,13 +174,9 @@ function App() {
             analysis={analysis}
             selectedGroupId={selectedGroupId}
             reviewedGroups={reviewedGroups}
-            codexModel={codexModel}
-            lang={lang}
             loading={!!loading}
             onSelectGroup={setSelectedGroupId}
             onToggleReviewed={toggleReviewed}
-            onSetCodexModel={setCodexModel}
-            onSetLang={setLang}
             onRunAnalysis={runAnalysis}
             onRefineGroup={refineGroup}
             onBack={goBackToList}
@@ -168,6 +192,33 @@ function App() {
             codexLog={codexLog}
           />
         </div>
+      )}
+
+      {/* Settings Modal — force on first launch */}
+      {!hasSettings && (
+        <SettingsModal
+          initialModel={codexModel}
+          initialLang={lang}
+          force={true}
+          onSave={(s) => {
+            saveSettings(s);
+          }}
+          onClose={() => {}}
+        />
+      )}
+
+      {/* Settings Modal — edit via gear icon */}
+      {settingsOpen && hasSettings && (
+        <SettingsModal
+          initialModel={codexModel}
+          initialLang={lang}
+          force={false}
+          onSave={(s) => {
+            saveSettings(s);
+            setSettingsOpen(false);
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
     </div>
   );

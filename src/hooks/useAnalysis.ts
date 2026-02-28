@@ -27,8 +27,6 @@ export function useAnalysis({
       setError("No hunks to analyze. Select a PR first.");
       return;
     }
-    localStorage.setItem("prvw:codexModel", codexModel);
-    localStorage.setItem("prvw:lang", lang);
 
     setLoading("Running intent analysis with Codex... (this may take a minute)");
     try {

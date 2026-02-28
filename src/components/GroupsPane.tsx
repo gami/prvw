@@ -6,13 +6,9 @@ interface Props {
   analysis: AnalysisResult | null;
   selectedGroupId: string | null;
   reviewedGroups: Set<string>;
-  codexModel: string;
-  lang: string;
   loading: boolean;
   onSelectGroup: (id: string | null) => void;
   onToggleReviewed: (id: string) => void;
-  onSetCodexModel: (v: string) => void;
-  onSetLang: (v: string) => void;
   onRunAnalysis: () => void;
   onRefineGroup: (group: IntentGroup) => void;
   onBack: () => void;
@@ -32,13 +28,9 @@ export function GroupsPane({
   analysis,
   selectedGroupId,
   reviewedGroups,
-  codexModel,
-  lang,
   loading,
   onSelectGroup,
   onToggleReviewed,
-  onSetCodexModel,
-  onSetLang,
   onRunAnalysis,
   onRefineGroup,
   onBack,
@@ -46,26 +38,14 @@ export function GroupsPane({
   return (
     <div className="pane pane-left">
       <div className="pane-header">
-        <h3>Intent Groups</h3>
-        <div className="model-row">
-          <input
-            className="input model-input"
-            placeholder="model (empty=config)"
-            value={codexModel}
-            onChange={(e) => onSetCodexModel(e.target.value)}
-          />
-          <input
-            className="input lang-input"
-            placeholder="lang"
-            value={lang}
-            onChange={(e) => onSetLang(e.target.value)}
-          />
+        <div className="pane-header-row" style={{ display: "flex" }}>
+          <h3>Intent Groups</h3>
           <button
             className="btn btn-accent"
             onClick={onRunAnalysis}
             disabled={loading || hunks.length === 0}
           >
-            Run
+            {analysis ? "Re-run" : "Run"}
           </button>
         </div>
         <button className="btn btn-ghost" onClick={onBack}>
