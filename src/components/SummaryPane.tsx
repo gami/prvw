@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
+import { useTruncationTooltip } from "../hooks/useTruncationTooltip";
 import type { AnalysisResult, IntentGroup, PrListItem } from "../types";
 
 interface Props {
@@ -12,42 +13,23 @@ interface Props {
 
 export function SummaryPane({ selectedPr, analysis, selectedGroup, codexLog, onOpenPr }: Props) {
   const [logOpen, setLogOpen] = useState(false);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
-  const titleRef = useRef<HTMLSpanElement>(null);
-
-  function showTooltip() {
-    const el = titleRef.current;
-    if (!el || el.scrollWidth <= el.clientWidth) return;
-    const rect = el.getBoundingClientRect();
-    setTooltip({ x: rect.left, y: rect.bottom + 4 });
-  }
+  const { tooltip, ref: titleRef, onMouseEnter, onMouseLeave } = useTruncationTooltip();
 
   return (
     <div className="pane pane-right">
       {selectedPr && (
         <div className="pr-title-bar">
-          <span
-            ref={titleRef}
-            className="pr-title-text"
-            onMouseEnter={showTooltip}
-            onMouseLeave={() => setTooltip(null)}
-          >
+          <span ref={titleRef} className="pr-title-text" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
             #{selectedPr.number} {selectedPr.title}
           </span>
-          {tooltip && createPortal(
-            <div
-              className="pr-title-tooltip"
-              style={{ left: tooltip.x, top: tooltip.y }}
-            >
-              #{selectedPr.number} {selectedPr.title}
-            </div>,
-            document.body,
-          )}
-          <button
-            className="btn btn-accent btn-open-pr"
-            disabled={!selectedPr.url}
-            onClick={onOpenPr}
-          >
+          {tooltip &&
+            createPortal(
+              <div className="pr-title-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+                #{selectedPr.number} {selectedPr.title}
+              </div>,
+              document.body,
+            )}
+          <button type="button" className="btn btn-accent btn-open-pr" disabled={!selectedPr.url} onClick={onOpenPr}>
             Open
           </button>
         </div>
@@ -64,9 +46,7 @@ export function SummaryPane({ selectedPr, analysis, selectedGroup, codexLog, onO
 
           {/* ── Group ── */}
           <div className="summary-card">
-            <div className="summary-card-header">
-              Intent Group{selectedGroup ? ` — ${selectedGroup.title}` : ""}
-            </div>
+            <div className="summary-card-header">Intent Group{selectedGroup ? ` — ${selectedGroup.title}` : ""}</div>
             <div className="summary-card-body">
               {selectedGroup ? (
                 <>
@@ -117,23 +97,20 @@ export function SummaryPane({ selectedPr, analysis, selectedGroup, codexLog, onO
               )}
               {codexLog && (
                 <section>
-                  <h4
-                    className="codex-log-toggle"
-                    onClick={() => setLogOpen((v) => !v)}
-                  >
+                  <h4 className="codex-log-toggle" onClick={() => setLogOpen((v) => !v)}>
                     Codex Log {logOpen ? "▾" : "▸"}
                   </h4>
                   {logOpen && <pre className="codex-log">{codexLog}</pre>}
                 </section>
               )}
-              {analysis.questions.length === 0 && !codexLog && (
-                <p className="hint">No comments.</p>
-              )}
+              {analysis.questions.length === 0 && !codexLog && <p className="hint">No comments.</p>}
             </div>
           </div>
         </div>
       ) : (
-        <p className="hint" style={{ padding: 16 }}>Run analysis to see summary, rationale, and checklists.</p>
+        <p className="hint" style={{ padding: 16 }}>
+          Run analysis to see summary, rationale, and checklists.
+        </p>
       )}
     </div>
   );

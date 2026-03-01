@@ -20,10 +20,20 @@ pub fn read_cache<T: DeserializeOwned>(app_data_dir: &Path, subdir: &str, key: &
 
 pub fn write_cache<T: Serialize>(app_data_dir: &Path, subdir: &str, key: &str, value: &T) {
     let dir = app_data_dir.join(subdir);
-    let _ = fs::create_dir_all(&dir);
+    if let Err(e) = fs::create_dir_all(&dir) {
+        eprintln!("[cache] failed to create dir {:?}: {}", dir, e);
+        return;
+    }
     let path = dir.join(format!("{}.json", key));
-    if let Ok(json) = serde_json::to_string(value) {
-        let _ = fs::write(path, json);
+    match serde_json::to_string(value) {
+        Ok(json) => {
+            if let Err(e) = fs::write(&path, json) {
+                eprintln!("[cache] failed to write {:?}: {}", path, e);
+            }
+        }
+        Err(e) => {
+            eprintln!("[cache] failed to serialize for key {}: {}", key, e);
+        }
     }
 }
 
@@ -75,8 +85,70 @@ pub async fn clear_cache(app: tauri::AppHandle) -> Result<String, String> {
         .map_err(|e| format!("Failed to get app data dir: {}", e))?;
     let cache_dir = app_data_dir.join("cache");
     if cache_dir.exists() {
-        fs::remove_dir_all(&cache_dir)
-            .map_err(|e| format!("Failed to clear cache: {}", e))?;
+        fs::remove_dir_all(&cache_dir).map_err(|e| format!("Failed to clear cache: {}", e))?;
     }
     Ok("Cache cleared.".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hash_key_is_deterministic() {
+        let a = hash_key("hello world");
+        let b = hash_key("hello world");
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn hash_key_different_inputs_differ() {
+        let a = hash_key("input_a");
+        let b = hash_key("input_b");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn hash_key_is_16_hex_chars() {
+        let h = hash_key("test");
+        assert_eq!(h.len(), 16);
+        assert!(h.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn format_bytes_zero() {
+        assert_eq!(format_bytes(0), "0 B");
+    }
+
+    #[test]
+    fn format_bytes_small() {
+        assert_eq!(format_bytes(512), "512 B");
+    }
+
+    #[test]
+    fn format_bytes_kilobytes() {
+        assert_eq!(format_bytes(1024), "1.0 KB");
+    }
+
+    #[test]
+    fn format_bytes_megabytes() {
+        assert_eq!(format_bytes(5 * 1024 * 1024), "5.0 MB");
+    }
+
+    #[test]
+    fn read_write_cache_roundtrip() {
+        let tmp = tempfile::tempdir().unwrap();
+        let key = "test_key";
+        let value = serde_json::json!({"foo": "bar", "num": 42});
+        write_cache(tmp.path(), "sub", key, &value);
+        let read: Option<serde_json::Value> = read_cache(tmp.path(), "sub", key);
+        assert_eq!(read.unwrap(), value);
+    }
+
+    #[test]
+    fn read_cache_miss_returns_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        let read: Option<serde_json::Value> = read_cache(tmp.path(), "sub", "nonexistent");
+        assert!(read.is_none());
+    }
 }

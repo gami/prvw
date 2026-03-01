@@ -2,7 +2,23 @@ use std::process::Command;
 
 use crate::cache;
 use crate::types::PrListItem;
-use crate::validation::validate_repo;
+
+fn validate_repo(repo: &str) -> Result<(), String> {
+    let parts: Vec<&str> = repo.split('/').collect();
+    if parts.len() != 2
+        || parts[0].is_empty()
+        || parts[1].is_empty()
+        || parts
+            .iter()
+            .any(|p| p.contains(|c: char| c.is_whitespace()))
+    {
+        return Err(format!(
+            "Invalid repo format: '{}'. Expected 'owner/repo'.",
+            repo
+        ));
+    }
+    Ok(())
+}
 
 fn gh_env() -> Vec<(&'static str, &'static str)> {
     vec![
@@ -58,9 +74,7 @@ pub async fn list_prs(
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         if stderr.contains("auth login") || stderr.contains("not logged") {
-            return Err(
-                "GitHub CLI is not authenticated. Please run: gh auth login".to_string(),
-            );
+            return Err("GitHub CLI is not authenticated. Please run: gh auth login".to_string());
         }
         return Err(format!("gh pr list failed: {}", stderr));
     }
@@ -72,17 +86,26 @@ pub async fn list_prs(
 }
 
 #[tauri::command]
-pub async fn get_pr_diff(app: tauri::AppHandle, repo: String, pr_number: u32) -> Result<String, String> {
+pub async fn get_pr_diff(
+    app: tauri::AppHandle,
+    repo: String,
+    pr_number: u32,
+    updated_at: Option<String>,
+    force: Option<bool>,
+) -> Result<String, String> {
     use tauri::Manager;
     validate_repo(&repo)?;
 
     let app_data_dir = app.path().app_data_dir().ok();
-    let cache_key = format!("{}__{}", repo.replace('/', "__"), pr_number);
+    let ts = updated_at.as_deref().unwrap_or("").replace(':', "-");
+    let cache_key = format!("{}__{}_{}", repo.replace('/', "__"), pr_number, ts);
 
-    // Check cache
-    if let Some(ref dir) = app_data_dir {
-        if let Some(cached) = cache::read_cache::<String>(dir, "cache/diff", &cache_key) {
-            return Ok(cached);
+    // Check cache (unless force)
+    if force != Some(true) {
+        if let Some(ref dir) = app_data_dir {
+            if let Some(cached) = cache::read_cache::<String>(dir, "cache/diff", &cache_key) {
+                return Ok(cached);
+            }
         }
     }
 
@@ -123,4 +146,40 @@ pub async fn get_pr_diff(app: tauri::AppHandle, repo: String, pr_number: u32) ->
     }
 
     Ok(diff)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_repo_valid() {
+        assert!(validate_repo("owner/repo").is_ok());
+    }
+
+    #[test]
+    fn validate_repo_no_slash() {
+        assert!(validate_repo("noslash").is_err());
+    }
+
+    #[test]
+    fn validate_repo_empty_owner() {
+        assert!(validate_repo("/repo").is_err());
+    }
+
+    #[test]
+    fn validate_repo_empty_name() {
+        assert!(validate_repo("owner/").is_err());
+    }
+
+    #[test]
+    fn validate_repo_whitespace_in_parts() {
+        assert!(validate_repo("ow ner/repo").is_err());
+        assert!(validate_repo("owner/re po").is_err());
+    }
+
+    #[test]
+    fn validate_repo_too_many_slashes() {
+        assert!(validate_repo("a/b/c").is_err());
+    }
 }

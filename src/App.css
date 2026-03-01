@@ -1,21 +1,23 @@
 /* ── Reset & Base ── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
 :root {
-  --bg: #0D0D0D;
+  --bg: #0d0d0d;
   --bg-surface: #1a1a1a;
   --bg-hover: #2a2a2a;
   --bg-active: #333333;
-  --text: #F2F2F2;
+  --text: #f2f2f2;
   --text-muted: #777;
   --border: #2a2a2a;
-  --accent: #F2505D;
-  --accent-hover: #F20519;
-  --danger: #F20505;
+  --accent: #f2505d;
+  --accent-hover: #f20519;
+  --danger: #f20505;
 
   font-family: "SF Mono", "Fira Code", "Cascadia Code", Menlo, monospace;
   font-size: 13px;
@@ -95,8 +97,12 @@ body {
   border-color: var(--accent);
 }
 
-.repo-input { width: 328px; }
-.search-input { width: 180px; }
+.repo-input {
+  width: 328px;
+}
+.search-input {
+  width: 180px;
+}
 /* ── Settings Button ── */
 .btn-settings {
   background: none;
@@ -622,7 +628,6 @@ body {
   font-size: 10px;
   flex-shrink: 0;
 }
-
 
 .hunk-id-cosmetic {
   background: var(--text-muted);
