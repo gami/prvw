@@ -14,7 +14,7 @@ interface Props {
 export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantiveHunkIds }: Props) {
   const [hideTests, setHideTests] = useState(false);
   const [hiddenExts, setHiddenExts] = useState<Set<string>>(new Set());
-  const [collapseCosmetic, setSubstantiveOnly] = useState(true);
+  const [collapseCosmetic, setCollapseCosmetic] = useState(true);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
 
   const allExtensions = useMemo(() => {
@@ -103,7 +103,7 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
             <>
               <span className="filter-sep" />
               <label className={`filter-toggle ${collapseCosmetic ? "filter-active" : "off"}`}>
-                <input type="checkbox" checked={collapseCosmetic} onChange={() => setSubstantiveOnly((v) => !v)} />
+                <input type="checkbox" checked={collapseCosmetic} onChange={() => setCollapseCosmetic((v) => !v)} />
                 hide cosmetic
               </label>
             </>
