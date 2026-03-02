@@ -1,6 +1,8 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
+import { UNASSIGNED_GROUP_ID } from "../constants";
 import type { Hunk, IntentGroup } from "../types";
-import { classifyFile, getFileExtension } from "../utils/classifyFile";
+import { classifyFile } from "../utils/classifyFile";
+import { getFileExtension } from "../utils/fileExtension";
 
 interface Props {
   hunks: Hunk[];
@@ -12,7 +14,7 @@ interface Props {
 export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantiveHunkIds }: Props) {
   const [hideTests, setHideTests] = useState(false);
   const [hiddenExts, setHiddenExts] = useState<Set<string>>(new Set());
-  const [substantiveOnly, setSubstantiveOnly] = useState(true);
+  const [collapseCosmetic, setCollapseCosmetic] = useState(true);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
 
   const allExtensions = useMemo(() => {
@@ -40,7 +42,7 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
       if (hiddenExts.has(getFileExtension(h.filePath))) return false;
       return true;
     });
-  }, [hunks, hideTests, hiddenExts, substantiveOnly, hasNonSubstantive, nonSubstantiveHunkIds]);
+  }, [hunks, hideTests, hiddenExts]);
 
   const fileGroups = useMemo(() => {
     const map = new Map<string, Hunk[]>();
@@ -71,46 +73,38 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
 
   const title = selectedGroup
     ? ` — ${selectedGroup.title}`
-    : selectedGroupId === "__unassigned"
-    ? " — Unassigned"
-    : " — All";
+    : selectedGroupId === UNASSIGNED_GROUP_ID
+      ? " — Unassigned"
+      : " — All";
 
   return (
     <div className="pane pane-center">
       <div className="pane-header pane-header-row">
         <h3>Diff{title}</h3>
         <div className="file-filters">
-          <button className="btn-mini" onClick={expandAll}>Expand all</button>
-          <button className="btn-mini" onClick={collapseAll}>Collapse all</button>
+          <button type="button" className="btn-mini" onClick={expandAll}>
+            Expand all
+          </button>
+          <button type="button" className="btn-mini" onClick={collapseAll}>
+            Collapse all
+          </button>
           <span className="filter-sep" />
           <label className={`filter-toggle ${hideTests ? "off" : ""}`}>
-            <input
-              type="checkbox"
-              checked={!hideTests}
-              onChange={() => setHideTests((v) => !v)}
-            />
+            <input type="checkbox" checked={!hideTests} onChange={() => setHideTests((v) => !v)} />
             test
           </label>
           {allExtensions.map((ext) => (
             <label key={ext} className={`filter-toggle ${hiddenExts.has(ext) ? "off" : ""}`}>
-              <input
-                type="checkbox"
-                checked={!hiddenExts.has(ext)}
-                onChange={() => toggleExt(ext)}
-              />
+              <input type="checkbox" checked={!hiddenExts.has(ext)} onChange={() => toggleExt(ext)} />
               {ext}
             </label>
           ))}
           {hasNonSubstantive && (
             <>
               <span className="filter-sep" />
-              <label className={`filter-toggle ${substantiveOnly ? "filter-active" : "off"}`}>
-                <input
-                  type="checkbox"
-                  checked={substantiveOnly}
-                  onChange={() => setSubstantiveOnly((v) => !v)}
-                />
-                substantive
+              <label className={`filter-toggle ${collapseCosmetic ? "filter-active" : "off"}`}>
+                <input type="checkbox" checked={collapseCosmetic} onChange={() => setCollapseCosmetic((v) => !v)} />
+                hide cosmetic
               </label>
             </>
           )}
@@ -118,19 +112,12 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
       </div>
       <div className="diff-view">
         {fileGroups.map(({ filePath, hunks: fileHunks }) => {
-          const allCosmetic = substantiveOnly && hasNonSubstantive && fileHunks.every((h) => nonSubstantiveHunkIds.has(h.id));
+          const allCosmetic =
+            collapseCosmetic && hasNonSubstantive && fileHunks.every((h) => nonSubstantiveHunkIds.has(h.id));
           const collapsed = collapsedFiles.has(filePath) || allCosmetic;
-          const adds = fileHunks.reduce(
-            (n, h) => n + h.lines.filter((l) => l.kind === "add").length,
-            0,
-          );
-          const dels = fileHunks.reduce(
-            (n, h) => n + h.lines.filter((l) => l.kind === "remove").length,
-            0,
-          );
-          const cosmeticCount = hasNonSubstantive
-            ? fileHunks.filter((h) => nonSubstantiveHunkIds.has(h.id)).length
-            : 0;
+          const adds = fileHunks.reduce((n, h) => n + h.lines.filter((l) => l.kind === "add").length, 0);
+          const dels = fileHunks.reduce((n, h) => n + h.lines.filter((l) => l.kind === "remove").length, 0);
+          const cosmeticCount = hasNonSubstantive ? fileHunks.filter((h) => nonSubstantiveHunkIds.has(h.id)).length : 0;
           return (
             <div key={filePath} className="file-group">
               <div className="file-header" onClick={() => toggleFile(filePath)}>
@@ -142,21 +129,15 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
                 </span>
                 <span className="file-hunk-count">
                   {fileHunks.length} hunk{fileHunks.length !== 1 ? "s" : ""}
-                  {cosmeticCount > 0 && (
-                    <span className="cosmetic-badge"> ({cosmeticCount} cosmetic)</span>
-                  )}
+                  {cosmeticCount > 0 && <span className="cosmetic-badge"> ({cosmeticCount} cosmetic)</span>}
                 </span>
               </div>
               {!collapsed &&
                 fileHunks.map((hunk) => {
                   const isCosmetic = nonSubstantiveHunkIds.has(hunk.id);
-                  const cosmeticCollapsed = isCosmetic && substantiveOnly;
+                  const cosmeticCollapsed = isCosmetic && collapseCosmetic;
                   return (
-                    <div
-                      key={hunk.id}
-                      className="hunk-block"
-                      style={cosmeticCollapsed ? { opacity: 0.5 } : undefined}
-                    >
+                    <div key={hunk.id} className="hunk-block" style={cosmeticCollapsed ? { opacity: 0.5 } : undefined}>
                       <div className="hunk-header">
                         <span className={`hunk-id${isCosmetic ? " hunk-id-cosmetic" : ""}`}>{hunk.id}</span>
                         <span className="hunk-range">{hunk.header}</span>

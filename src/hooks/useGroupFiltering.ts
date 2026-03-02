@@ -1,13 +1,18 @@
-import { useState, useEffect, useMemo } from "react";
-import type { Hunk, AnalysisResult, IntentGroup } from "../types";
+import { useEffect, useMemo, useState } from "react";
 import { UNASSIGNED_GROUP_ID } from "../constants";
+import type { AnalysisResult, Hunk, IntentGroup } from "../types";
 
 export function useGroupFiltering(hunks: Hunk[], analysis: AnalysisResult | null) {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [reviewedGroups, setReviewedGroups] = useState<Set<string>>(new Set());
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedGroupId intentionally excluded to avoid overwriting user selection
   useEffect(() => {
     if (analysis && analysis.groups.length > 0) {
+      // Keep current selection if the group still exists (e.g. after refine)
+      if (selectedGroupId && analysis.groups.some((g) => g.id === selectedGroupId)) {
+        return;
+      }
       setSelectedGroupId(analysis.groups[0].id);
     }
   }, [analysis]);

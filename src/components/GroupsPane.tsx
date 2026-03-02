@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import type { Hunk, AnalysisResult, IntentGroup } from "../types";
+import { useEffect, useState } from "react";
 import { UNASSIGNED_GROUP_ID } from "../constants";
+import type { AnalysisResult, Hunk, IntentGroup } from "../types";
+import { GroupListItem } from "./GroupListItem";
 
 const SPINNER_FRAMES = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
 
@@ -29,15 +30,6 @@ interface Props {
   onBack: () => void;
 }
 
-const riskColor = (risk: string) => {
-  switch (risk) {
-    case "high": return "#e74c3c";
-    case "medium": return "#f39c12";
-    case "low": return "#27ae60";
-    default: return "#888";
-  }
-};
-
 export function GroupsPane({
   hunks,
   analysis,
@@ -63,6 +55,7 @@ export function GroupsPane({
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             {fromCache && <span className="cache-badge">cached</span>}
             <button
+              type="button"
               className="btn btn-accent"
               onClick={() => onRunAnalysis(!!analysis)}
               disabled={loading || hunks.length === 0}
@@ -71,7 +64,7 @@ export function GroupsPane({
             </button>
           </div>
         </div>
-        <button className="btn btn-ghost" onClick={onBack}>
+        <button type="button" className="btn btn-ghost" onClick={onBack}>
           ← Back
         </button>
       </div>
@@ -82,67 +75,32 @@ export function GroupsPane({
         </div>
       )}
       {!analysis && !loading && hunks.length > 0 && (
-        <p className="hint">
-          {hunks.length} hunks loaded. Click "Run" to group by intent.
-        </p>
+        <p className="hint">{hunks.length} hunks loaded. Click "Run" to group by intent.</p>
       )}
       {analysis && (
         <div className="groups-list">
-          <div
-            className={`group-item ${selectedGroupId === null ? "active" : ""}`}
-            onClick={() => onSelectGroup(null)}
-          >
+          <div className={`group-item ${selectedGroupId === null ? "active" : ""}`} onClick={() => onSelectGroup(null)}>
             <span className="group-title">All ({hunks.length} hunks)</span>
           </div>
           {analysis.groups.map((g) => (
-            <div
+            <GroupListItem
               key={g.id}
-              className={`group-item ${selectedGroupId === g.id ? "active" : ""} ${reviewedGroups.has(g.id) ? "reviewed" : ""}`}
-              onClick={() => onSelectGroup(g.id)}
-            >
-              <label className="group-check" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  checked={reviewedGroups.has(g.id)}
-                  onChange={() => onToggleReviewed(g.id)}
-                />
-              </label>
-              <div className="group-info">
-                <span className="group-title">{g.title}</span>
-                <span className="group-meta">
-                  {g.category && (
-                    <span className="category-badge" style={{ borderColor: riskColor(g.risk), color: riskColor(g.risk) }}>
-                      {g.category}
-                    </span>
-                  )}
-                  {" · "}
-                  {g.hunkIds.length} hunks
-                  {(() => {
-                    const c = g.hunkIds.filter((id) => nonSubstantiveHunkIds.has(id)).length;
-                    return c > 0 ? ` · ${c} cosmetic` : null;
-                  })()}
-                  <button
-                    className="btn-refine"
-                    disabled={loading}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRefineGroup(g);
-                    }}
-                  >
-                    Refine
-                  </button>
-                </span>
-              </div>
-            </div>
+              group={g}
+              selected={selectedGroupId === g.id}
+              reviewed={reviewedGroups.has(g.id)}
+              loading={loading}
+              nonSubstantiveHunkIds={nonSubstantiveHunkIds}
+              onSelect={() => onSelectGroup(g.id)}
+              onToggleReviewed={() => onToggleReviewed(g.id)}
+              onRefine={() => onRefineGroup(g)}
+            />
           ))}
           {analysis.unassignedHunkIds.length > 0 && (
             <div
               className={`group-item ${selectedGroupId === UNASSIGNED_GROUP_ID ? "active" : ""}`}
               onClick={() => onSelectGroup(UNASSIGNED_GROUP_ID)}
             >
-              <span className="group-title unassigned">
-                Unassigned ({analysis.unassignedHunkIds.length} hunks)
-              </span>
+              <span className="group-title unassigned">Unassigned ({analysis.unassignedHunkIds.length} hunks)</span>
             </div>
           )}
         </div>

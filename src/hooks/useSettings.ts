@@ -1,15 +1,9 @@
 import { useState } from "react";
 
 export function useSettings() {
-  const [codexModel, setCodexModel] = useState(
-    () => localStorage.getItem("prvw:codexModel") ?? ""
-  );
-  const [lang, setLang] = useState(
-    () => localStorage.getItem("prvw:lang") ?? "ja"
-  );
-  const [hasSettings, setHasSettings] = useState(
-    () => localStorage.getItem("prvw:lang") !== null
-  );
+  const [codexModel, setCodexModel] = useState(() => localStorage.getItem("prvw:codexModel") ?? "");
+  const [lang, setLang] = useState(() => localStorage.getItem("prvw:lang") ?? "ja");
+  const [hasSettings, setHasSettings] = useState(() => localStorage.getItem("prvw:lang") !== null);
 
   function saveSettings(s: { codexModel: string; lang: string }) {
     localStorage.setItem("prvw:codexModel", s.codexModel);
