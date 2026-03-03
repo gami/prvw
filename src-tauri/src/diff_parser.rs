@@ -56,10 +56,7 @@ fn parse_unified_diff(diff_text: &str) -> Result<Vec<Hunk>, String> {
             || line.starts_with("diff --combined ")
             || line.starts_with("From ")
                 && line.len() > 45
-                && line
-                    .as_bytes()
-                    .get(5)
-                    .is_some_and(|b| b.is_ascii_hexdigit())
+                && line.as_bytes().get(5).is_some_and(u8::is_ascii_hexdigit)
         {
             if let Some(hb) = current_hunk.take() {
                 flush_hunk(hb, &mut hunk_counter, &mut hunks);

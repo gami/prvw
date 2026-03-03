@@ -101,7 +101,10 @@ export function GroupsPane({
                 <span className="review-progress-bar">
                   <span className="review-progress-fill" style={{ width: `${reviewProgress.pct}%` }} />
                 </span>
-                <span className="review-progress-label" style={reviewProgress.pct === 100 ? { color: "#fff" } : undefined}>
+                <span
+                  className="review-progress-label"
+                  style={reviewProgress.pct === 100 ? { color: "#fff" } : undefined}
+                >
                   {reviewProgress.pct}%
                 </span>
               </span>
