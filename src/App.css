@@ -599,20 +599,35 @@ body {
 }
 
 /* ── Review Progress ── */
+.review-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .review-progress-bar {
-  width: 100%;
-  height: 3px;
+  display: block;
+  width: 60px;
+  height: 4px;
   background: var(--border);
   border-radius: 2px;
-  margin-top: 4px;
   overflow: hidden;
 }
 
 .review-progress-fill {
+  display: block;
   height: 100%;
   background: #27ae60;
   border-radius: 2px;
   transition: width 0.3s ease;
+}
+
+.review-progress-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1;
 }
 
 /* ── Diff View ── */
