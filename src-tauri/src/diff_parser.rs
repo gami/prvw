@@ -51,7 +51,13 @@ fn parse_unified_diff(diff_text: &str) -> Result<Vec<Hunk>, String> {
     let mut current_hunk: Option<HunkBuilder> = None;
 
     for line in diff_text.lines() {
-        if line.starts_with("diff --git ") || line.starts_with("diff --combined ") {
+        // Boundaries: diff headers and git-format-patch commit headers ("From <hash> ...")
+        if line.starts_with("diff --git ")
+            || line.starts_with("diff --combined ")
+            || line.starts_with("From ")
+                && line.len() > 45
+                && line.as_bytes().get(5).is_some_and(|b| b.is_ascii_hexdigit())
+        {
             if let Some(hb) = current_hunk.take() {
                 flush_hunk(hb, &mut hunk_counter, &mut hunks);
             }
@@ -380,5 +386,42 @@ diff --git a/new.rs b/new.rs
         assert_eq!(hunks.len(), 1);
         assert_eq!(hunks[0].file_path, "new.rs");
         assert!(hunks[0].lines.iter().all(|l| l.kind == "add"));
+    }
+
+    #[test]
+    fn patch_format_headers_do_not_leak_into_hunks() {
+        // Simulates git-format-patch output with commit headers between diffs
+        let diff = "\
+diff --git a/a.sql b/a.sql
+--- a/a.sql
++++ b/a.sql
+@@ -1,2 +1,3 @@
+ existing
++added
+ end
+From abc123def456789012345678901234567890abcd Mon Sep 17 00:00:00 2001
+From: Author <a@b.com>
+Date: Mon, 1 Jan 2026 00:00:00 +0900
+Subject: =?UTF-8?q?Some=20encoded=20subject?=
+
+Body text
+---
+ file.go | 2 +-
+ 1 file changed
+
+diff --git a/b.go b/b.go
+--- a/b.go
++++ b/b.go
+@@ -1,2 +1,3 @@
+ func main() {
++    fmt.Println()
+ }";
+        let hunks = parse_unified_diff(diff).unwrap();
+        assert_eq!(hunks.len(), 2);
+        // First hunk should only have 3 lines, not garbage from patch headers
+        assert_eq!(hunks[0].lines.len(), 3);
+        assert_eq!(hunks[0].file_path, "a.sql");
+        assert_eq!(hunks[1].file_path, "b.go");
+        assert_eq!(hunks[1].lines.len(), 3);
     }
 }
