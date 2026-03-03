@@ -33,9 +33,21 @@ npm run tauri dev
 
 1. Enter a repo (e.g. `facebook/react`) and click **Fetch PRs**
 2. Select a PR — diff is fetched, parsed, and displayed in the center pane
-3. Click **Run Codex** — hunks are grouped by change intent
+3. Click **Run** — hunks are grouped by change intent (cached for instant recall)
 4. Click a group to filter the diff; summary, rationale, and checklists appear in the right pane
 5. Check off groups as you review them
+6. Use **Refine** on a group to split it into smaller sub-groups
+7. Use **Re-run** to bypass cache and re-analyze
+
+## Features
+
+- **Intent grouping** — LLM groups hunks by change purpose with category labels (schema, logic, api, ui, test, config, docs, refactor)
+- **Risk coloring** — Group badges are colored by risk level (green/yellow/red)
+- **Cosmetic detection** — Non-substantive changes (formatting, whitespace, lock files) are auto-collapsed
+- **Disk cache** — Analysis results and PR diffs are cached to disk for instant recall across sessions
+- **Substantive filter** — Toggle to collapse/expand cosmetic hunks
+- **File filters** — Filter by extension, hide test files
+- **Settings** — Configure Codex model, response language, and manage cache
 
 ## Troubleshooting
 
@@ -52,29 +64,38 @@ npm run tauri dev
 
 ```
 prvw/
-├── src/                    # Frontend (React + TS)
-│   ├── App.tsx             # Main shell — header, routing, state
-│   ├── App.css             # Styles
-│   ├── types.ts            # TypeScript type definitions
-│   ├── constants.ts        # Shared constants
-│   ├── components/         # UI components
-│   │   ├── PrList.tsx      # PR list table
-│   │   ├── GroupsPane.tsx  # Left pane — intent groups
-│   │   ├── DiffPane.tsx    # Center pane — diff view
-│   │   └── SummaryPane.tsx # Right pane — summary / AI comments
+├── src/                        # Frontend (React + TS)
+│   ├── App.tsx                 # Main shell — header, routing, state
+│   ├── App.css                 # Styles
+│   ├── types.ts                # TypeScript type definitions
+│   ├── constants.ts            # Shared constants
+│   ├── components/
+│   │   ├── PrList.tsx          # PR list table
+│   │   ├── GroupsPane.tsx      # Left pane — intent groups
+│   │   ├── DiffPane.tsx        # Center pane — diff view
+│   │   ├── SummaryPane.tsx     # Right pane — summary / AI comments
+│   │   └── SettingsModal.tsx   # Settings & cache management
 │   ├── hooks/
-│   │   └── useAnalysis.ts  # Codex analysis + refine logic
+│   │   ├── useAnalysis.ts      # Codex analysis + refine logic
+│   │   ├── useCodexApi.ts      # Tauri invoke wrappers
+│   │   ├── useGroupFiltering.ts # Group selection & filtering
+│   │   ├── usePrDiff.ts        # PR diff fetching
+│   │   ├── usePrList.ts        # PR list fetching
+│   │   ├── useRepoHistory.ts   # Repo input history
+│   │   └── useSettings.ts     # Settings persistence
 │   └── utils/
-│       └── classifyFile.ts # File category classification
-├── src-tauri/              # Backend (Rust)
-│   ├── schemas/            # JSON schemas for Codex output
+│       └── classifyFile.ts     # File category classification
+├── src-tauri/                  # Backend (Rust)
+│   ├── schemas/                # JSON schemas for Codex output
 │   └── src/
-│       ├── lib.rs          # Tauri app init
-│       ├── types.rs        # Shared structs
-│       ├── gh.rs           # GitHub CLI commands
-│       ├── diff_parser.rs  # Unified diff parser
-│       ├── codex.rs        # Codex CLI commands (analyze, refine)
-│       └── validation.rs   # Analysis result validation
+│       ├── lib.rs              # Tauri app init & command registration
+│       ├── types.rs            # Shared structs
+│       ├── gh.rs               # GitHub CLI commands
+│       ├── diff_parser.rs      # Unified diff parser
+│       ├── codex.rs            # Codex CLI commands (analyze, refine)
+│       ├── codex_runner.rs     # Codex subprocess execution
+│       ├── cache.rs            # Disk cache utilities
+│       └── validation.rs       # Analysis result validation
 ├── index.html
 └── package.json
 ```

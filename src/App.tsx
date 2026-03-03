@@ -1,16 +1,18 @@
-import { useState, useEffect, useRef, useMemo } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useRepoHistory } from "./hooks/useRepoHistory";
-import { usePrList } from "./hooks/usePrList";
-import { usePrDiff } from "./hooks/usePrDiff";
-import { useAnalysis } from "./hooks/useAnalysis";
-import { useSettings } from "./hooks/useSettings";
-import { useGroupFiltering } from "./hooks/useGroupFiltering";
-import { PrList } from "./components/PrList";
-import { GroupsPane } from "./components/GroupsPane";
+import { useMemo, useState } from "react";
 import { DiffPane } from "./components/DiffPane";
-import { SummaryPane } from "./components/SummaryPane";
+import { GroupsPane } from "./components/GroupsPane";
+import { Header } from "./components/Header";
+import { PrList } from "./components/PrList";
 import { SettingsModal } from "./components/SettingsModal";
+import { SummaryPane } from "./components/SummaryPane";
+import { useAnalysis } from "./hooks/useAnalysis";
+import { useAutoRunAnalysis } from "./hooks/useAutoRunAnalysis";
+import { useGroupFiltering } from "./hooks/useGroupFiltering";
+import { usePrDiff } from "./hooks/usePrDiff";
+import { usePrList } from "./hooks/usePrList";
+import { useRepoHistory } from "./hooks/useRepoHistory";
+import { useSettings } from "./hooks/useSettings";
 import "./App.css";
 
 function App() {
@@ -22,7 +24,6 @@ function App() {
 
   // ── Settings ──
   const { codexModel, lang, hasSettings, saveSettings } = useSettings();
-  const autoRunTriggered = useRef(false);
 
   // ── Hooks ──
   const { repo, setRepo, repoHistory, persistRepo } = useRepoHistory();
@@ -39,7 +40,12 @@ function App() {
     setLoading,
   });
 
-  const { selectedPr, hunks, selectPr: rawSelectPr, clearSelection } = usePrDiff({
+  const {
+    selectedPr,
+    hunks,
+    selectPr: rawSelectPr,
+    clearSelection,
+  } = usePrDiff({
     repo,
     setError,
     setLoading,
@@ -64,35 +70,27 @@ function App() {
     resetFiltering,
   } = useGroupFiltering(hunks, analysis);
 
-  const nonSubstantiveHunkIds = useMemo(
-    () => new Set(analysis?.nonSubstantiveHunkIds ?? []),
-    [analysis],
-  );
+  const nonSubstantiveHunkIds = useMemo(() => new Set(analysis?.nonSubstantiveHunkIds ?? []), [analysis]);
 
   // ── Auto-run analysis when hunks are loaded ──
-  useEffect(() => {
-    if (
-      hunks.length > 0 &&
-      !analysis &&
-      !loading &&
-      hasSettings &&
-      !autoRunTriggered.current
-    ) {
-      autoRunTriggered.current = true;
-      runAnalysis();
-    }
-  }, [hunks, analysis, loading, hasSettings]);
+  const { resetAutoRun } = useAutoRunAnalysis({
+    hunks,
+    analysis,
+    loading,
+    hasSettings,
+    runAnalysis,
+  });
 
   // ── Handlers ──
-  function handleSelectPr(pr: typeof prs[number]) {
-    autoRunTriggered.current = false;
+  function handleSelectPr(pr: (typeof prs)[number]) {
+    resetAutoRun();
     resetAnalysis();
     resetFiltering();
     rawSelectPr(pr);
   }
 
   function goBackToList() {
-    autoRunTriggered.current = false;
+    resetAutoRun();
     clearSelection();
     resetAnalysis();
     resetFiltering();
@@ -101,58 +99,30 @@ function App() {
   // ── Render ──
   return (
     <div className="app">
-      {/* Header */}
-      <header className="header">
-        <div className="header-left">
-          <strong className="logo">PRVW</strong>
-          <input
-            className="input repo-input"
-            placeholder="owner/repo"
-            list="repo-history"
-            value={repo}
-            onChange={(e) => setRepo(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && fetchPrs()}
-          />
-          <datalist id="repo-history">
-            {repoHistory.map((r) => (
-              <option key={r} value={r} />
-            ))}
-          </datalist>
-          <input
-            className="input search-input"
-            placeholder="Search PRs (optional)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && fetchPrs()}
-          />
-          <button className="btn btn-primary" onClick={fetchPrs} disabled={!!loading}>
-            Fetch PRs
-          </button>
-        </div>
-        <div className="header-right">
-          <button
-            className="btn-settings"
-            title="Settings"
-            onClick={() => setSettingsOpen(true)}
-          >
-            &#9881;
-          </button>
-        </div>
-      </header>
+      <Header
+        repo={repo}
+        search={search}
+        repoHistory={repoHistory}
+        loading={!!loading}
+        onRepoChange={setRepo}
+        onSearchChange={setSearch}
+        onFetchPrs={fetchPrs}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       {/* Error / Loading */}
       {error && (
         <div className="error-bar">
           <span>{error}</span>
-          <button className="btn-close" onClick={() => setError(null)}>×</button>
+          <button type="button" className="btn-close" onClick={() => setError(null)}>
+            ×
+          </button>
         </div>
       )}
       {loading && <div className="loading-bar">{loading}</div>}
 
       {/* PR List (shown when no PR selected) */}
-      {!selectedPr && prs.length > 0 && (
-        <PrList prs={prs} onSelect={handleSelectPr} />
-      )}
+      {!selectedPr && prs.length > 0 && <PrList prs={prs} onSelect={handleSelectPr} />}
 
       {/* 3-Pane Layout */}
       {selectedPr && (

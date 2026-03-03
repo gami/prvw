@@ -25,3 +25,7 @@ serde_json = "1"
 tempfile = "3"
 regex = "1"
 
+[lints.clippy]
+unwrap_used = "warn"
+needless_pass_by_value = "warn"
+redundant_closure_for_method_calls = "warn"

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useRef, useState } from "react";
 import type { PrListItem } from "../types";
 
 interface UsePrListOptions {
@@ -12,8 +12,10 @@ interface UsePrListOptions {
 
 export function usePrList({ repo, search, onFetched, setError, setLoading }: UsePrListOptions) {
   const [prs, setPrs] = useState<PrListItem[]>([]);
+  const requestIdRef = useRef(0);
 
   async function fetchPrs() {
+    const id = ++requestIdRef.current;
     setError(null);
     if (!repo.trim()) {
       setError("Please enter a repository (owner/repo).");
@@ -27,24 +29,27 @@ export function usePrList({ repo, search, onFetched, setError, setLoading }: Use
         state: "open",
         search: search.trim() || null,
       });
+      if (id !== requestIdRef.current) return;
       setPrs(items);
       onFetched(repo.trim());
       if (items.length === 0) {
         setError("No open PRs found.");
       }
     } catch (e) {
+      if (id !== requestIdRef.current) return;
       setError(String(e));
     } finally {
-      setLoading(null);
+      if (id === requestIdRef.current) {
+        setLoading(null);
+      }
     }
   }
 
-  // Auto-fetch on startup if repo is saved
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run only once on mount
   useEffect(() => {
     if (repo.trim()) {
       fetchPrs();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return { prs, fetchPrs };

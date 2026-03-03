@@ -8,13 +8,14 @@
         "properties": {
           "id": { "type": "string" },
           "title": { "type": "string" },
+          "category": { "type": "string", "enum": ["schema", "logic", "api", "ui", "test", "config", "docs", "refactor", "other"] },
           "rationale": { "type": "string" },
           "risk": { "type": "string", "enum": ["low", "medium", "high"] },
           "hunkIds": { "type": "array", "items": { "type": "string" } },
           "reviewerChecklist": { "type": "array", "items": { "type": "string" } },
           "suggestedTests": { "type": "array", "items": { "type": "string" } }
         },
-        "required": ["id", "title", "rationale", "risk", "hunkIds", "reviewerChecklist", "suggestedTests"],
+        "required": ["id", "title", "category", "rationale", "risk", "hunkIds", "reviewerChecklist", "suggestedTests"],
         "additionalProperties": false
       }
     }

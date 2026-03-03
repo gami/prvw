@@ -34,6 +34,7 @@ export interface Hunk {
 
 export interface ParsedDiff {
   hunks: Hunk[];
+  raw: string;
 }
 
 export type GroupCategory = "schema" | "logic" | "api" | "ui" | "test" | "config" | "docs" | "refactor" | "other";

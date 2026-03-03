@@ -31,11 +31,14 @@ pub fn build_args(
     output_path: &str,
     model: &Option<String>,
     prompt: String,
-) -> Vec<String> {
+) -> Result<Vec<String>, String> {
     let mut args = vec![
         "exec".to_string(),
         "-C".to_string(),
-        temp_path.to_str().unwrap().to_string(),
+        temp_path
+            .to_str()
+            .ok_or_else(|| "Non-UTF-8 temp path".to_string())?
+            .to_string(),
         "--skip-git-repo-check".to_string(),
         "--full-auto".to_string(),
         "--sandbox".to_string(),
@@ -56,7 +59,7 @@ pub fn build_args(
     }
 
     args.push(prompt);
-    args
+    Ok(args)
 }
 
 /// Run Codex CLI with the given args and return captured output.
@@ -91,7 +94,12 @@ pub fn run(args: &[String]) -> Result<CodexOutput, String> {
         }
         return Err(format!("Codex exec failed: {}", stderr));
     }
-    Ok(CodexOutput { stdout, stderr, elapsed_secs, model_used })
+    Ok(CodexOutput {
+        stdout,
+        stderr,
+        elapsed_secs,
+        model_used,
+    })
 }
 
 /// Build a structured log string from Codex output.
@@ -132,4 +140,134 @@ pub fn prepare_temp_dir(
     let output_path = temp_path.join(output_filename);
 
     Ok((temp_dir, schema_path, output_path))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lang_suffix_none() {
+        assert_eq!(lang_suffix(&None), "");
+    }
+
+    #[test]
+    fn lang_suffix_empty_string() {
+        assert_eq!(lang_suffix(&Some(String::new())), "");
+    }
+
+    #[test]
+    fn lang_suffix_whitespace_only() {
+        assert_eq!(lang_suffix(&Some("   ".to_string())), "");
+    }
+
+    #[test]
+    fn lang_suffix_japanese() {
+        assert_eq!(
+            lang_suffix(&Some("Japanese".to_string())),
+            " Respond in Japanese."
+        );
+    }
+
+    #[test]
+    fn lang_suffix_trims_whitespace() {
+        assert_eq!(
+            lang_suffix(&Some("  English  ".to_string())),
+            " Respond in English."
+        );
+    }
+
+    #[test]
+    fn build_args_without_model() {
+        let tmp = tempfile::tempdir().unwrap();
+        let args = build_args(
+            tmp.path(),
+            "/schema.json",
+            "/output.json",
+            &None,
+            "prompt text".to_string(),
+        )
+        .unwrap();
+        assert!(args.contains(&"exec".to_string()));
+        assert!(args.contains(&"--full-auto".to_string()));
+        assert!(args.contains(&"--sandbox".to_string()));
+        assert!(args.contains(&"read-only".to_string()));
+        assert!(args.contains(&"--output-schema".to_string()));
+        assert!(!args.contains(&"-m".to_string()));
+        // Last arg is the prompt
+        assert_eq!(args.last().unwrap(), "prompt text");
+    }
+
+    #[test]
+    fn build_args_with_model() {
+        let tmp = tempfile::tempdir().unwrap();
+        let args = build_args(
+            tmp.path(),
+            "/schema.json",
+            "/output.json",
+            &Some("gpt-4".to_string()),
+            "prompt".to_string(),
+        )
+        .unwrap();
+        let m_pos = args.iter().position(|a| a == "-m").unwrap();
+        assert_eq!(args[m_pos + 1], "gpt-4");
+    }
+
+    #[test]
+    fn build_args_empty_model_ignored() {
+        let tmp = tempfile::tempdir().unwrap();
+        let args = build_args(
+            tmp.path(),
+            "/schema.json",
+            "/output.json",
+            &Some("  ".to_string()),
+            "prompt".to_string(),
+        )
+        .unwrap();
+        assert!(!args.contains(&"-m".to_string()));
+    }
+
+    #[test]
+    fn build_log_with_stderr_and_stdout() {
+        let output = CodexOutput {
+            stdout: "stdout text".to_string(),
+            stderr: "stderr text".to_string(),
+            elapsed_secs: 1.5,
+            model_used: "gpt-4".to_string(),
+        };
+        let log = build_log("test", &output);
+        assert!(log.contains("[test]"));
+        assert!(log.contains("model=gpt-4"));
+        assert!(log.contains("1.5s"));
+        assert!(log.contains("stderr text"));
+        assert!(log.contains("stdout text"));
+    }
+
+    #[test]
+    fn build_log_empty_stderr_omitted() {
+        let output = CodexOutput {
+            stdout: "out".to_string(),
+            stderr: String::new(),
+            elapsed_secs: 0.0,
+            model_used: "m".to_string(),
+        };
+        let log = build_log("x", &output);
+        // Should have header + stdout, no extra empty stderr section
+        let lines: Vec<&str> = log.lines().collect();
+        assert_eq!(lines[0], "[x] model=m elapsed=0.0s");
+        assert_eq!(lines[1], "out");
+    }
+
+    #[test]
+    fn prepare_temp_dir_creates_files() {
+        let (temp_dir, schema_path, output_path) =
+            prepare_temp_dir("{}", "{\"type\":\"object\"}", "out.json").unwrap();
+        let temp_path = temp_dir.path();
+        assert!(temp_path.join("hunks.json").exists());
+        assert!(schema_path.exists());
+        // output_path should not exist yet (codex writes it)
+        assert!(!output_path.exists());
+        let hunks = std::fs::read_to_string(temp_path.join("hunks.json")).unwrap();
+        assert_eq!(hunks, "{}");
+    }
 }

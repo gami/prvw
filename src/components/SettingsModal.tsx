@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useState } from "react";
+import { useCacheManager } from "../hooks/useCacheManager";
 
 interface Props {
   initialModel: string;
@@ -9,36 +9,13 @@ interface Props {
   onClose: () => void;
 }
 
-export function SettingsModal({
-  initialModel,
-  initialLang,
-  force,
-  onSave,
-  onClose,
-}: Props) {
+export function SettingsModal({ initialModel, initialLang, force, onSave, onClose }: Props) {
   const [model, setModel] = useState(initialModel);
   const [lang, setLang] = useState(initialLang || "ja");
-  const [clearing, setClearing] = useState(false);
-  const [cacheSize, setCacheSize] = useState<string | null>(null);
-
-  useEffect(() => {
-    invoke<string>("get_cache_size").then(setCacheSize).catch(() => {});
-  }, []);
+  const { cacheSize, clearing, clearCache } = useCacheManager();
 
   function handleSave() {
     onSave({ codexModel: model, lang });
-  }
-
-  async function handleClearCache() {
-    setClearing(true);
-    try {
-      await invoke("clear_cache");
-      setCacheSize("0 B");
-    } catch (e) {
-      alert(`Failed to clear cache: ${e}`);
-    } finally {
-      setClearing(false);
-    }
   }
 
   return (
@@ -47,7 +24,7 @@ export function SettingsModal({
         <div className="modal-header">
           <h3>Settings</h3>
           {!force && (
-            <button className="btn-close" onClick={onClose}>
+            <button type="button" className="btn-close" onClick={onClose}>
               ×
             </button>
           )}
@@ -76,8 +53,9 @@ export function SettingsModal({
           <div className="modal-field">
             <label className="modal-label">Cache{cacheSize != null ? ` (${cacheSize})` : ""}</label>
             <button
+              type="button"
               className="btn btn-accent"
-              onClick={handleClearCache}
+              onClick={clearCache}
               disabled={clearing}
               style={{ alignSelf: "flex-start" }}
             >
@@ -87,11 +65,11 @@ export function SettingsModal({
         </div>
         <div className="modal-footer">
           {!force && (
-            <button className="btn btn-ghost" onClick={onClose}>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>
               Cancel
             </button>
           )}
-          <button className="btn btn-primary" onClick={handleSave}>
+          <button type="button" className="btn btn-primary" onClick={handleSave}>
             Save
           </button>
         </div>

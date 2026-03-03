@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Hunk, AnalysisResponse, IntentGroup, RefineResponse } from "../types";
+import type { AnalysisResponse, Hunk, IntentGroup, RefineResponse } from "../types";
 
 export async function analyzeIntents(
   hunks: Hunk[],

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { Hunk, AnalysisResult, IntentGroup } from "../types";
+import { useRef, useState } from "react";
+import type { AnalysisResult, Hunk, IntentGroup } from "../types";
 import { analyzeIntents, refineGroupApi } from "./useCodexApi";
 
 interface UseAnalysisOptions {
@@ -11,19 +11,14 @@ interface UseAnalysisOptions {
   setLoading: (msg: string | null) => void;
 }
 
-export function useAnalysis({
-  hunks,
-  prBody,
-  codexModel,
-  lang,
-  setError,
-  setLoading,
-}: UseAnalysisOptions) {
+export function useAnalysis({ hunks, prBody, codexModel, lang, setError, setLoading }: UseAnalysisOptions) {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [codexLog, setCodexLog] = useState<string>("");
   const [fromCache, setFromCache] = useState(false);
+  const requestIdRef = useRef(0);
 
   async function runAnalysis(force?: boolean) {
+    const id = ++requestIdRef.current;
     setError(null);
     setCodexLog("");
     setFromCache(false);
@@ -39,35 +34,40 @@ export function useAnalysis({
     );
     try {
       const res = await analyzeIntents(hunks, codexModel, lang, force, prBody);
+      if (id !== requestIdRef.current) return;
       setAnalysis(res.result);
       setCodexLog(res.codexLog);
       setFromCache(res.fromCache);
     } catch (e) {
+      if (id !== requestIdRef.current) return;
       setError(String(e));
     } finally {
-      setLoading(null);
+      if (id === requestIdRef.current) {
+        setLoading(null);
+      }
     }
   }
 
-  async function refineGroup(group: IntentGroup) {
+  async function refineGroup(group: IntentGroup, force?: boolean) {
     setError(null);
     setLoading(`Refining "${group.title}"...`);
     try {
-      const res = await refineGroupApi(hunks, group, codexModel, lang);
+      const res = await refineGroupApi(hunks, group, codexModel, lang, force);
 
-      if (!analysis) return;
-
-      // Replace the refined group with its sub-groups
-      const newGroups: IntentGroup[] = [];
-      for (const g of analysis.groups) {
-        if (g.id === group.id) {
-          newGroups.push(...res.subGroups);
-        } else {
-          newGroups.push(g);
+      // Replace the refined group with its sub-groups using functional setState
+      setAnalysis((prev) => {
+        if (!prev) return prev;
+        const newGroups: IntentGroup[] = [];
+        for (const g of prev.groups) {
+          if (g.id === group.id) {
+            newGroups.push(...res.subGroups);
+          } else {
+            newGroups.push(g);
+          }
         }
-      }
-      setAnalysis({ ...analysis, groups: newGroups });
-      setCodexLog((prev) => prev + "\n" + res.codexLog);
+        return { ...prev, groups: newGroups };
+      });
+      setCodexLog((prev) => `${prev}\n${res.codexLog}`);
       if (!res.fromCache) setFromCache(false);
     } catch (e) {
       setError(String(e));
@@ -77,6 +77,7 @@ export function useAnalysis({
   }
 
   function resetAnalysis() {
+    requestIdRef.current++;
     setAnalysis(null);
     setCodexLog("");
     setFromCache(false);

@@ -24,9 +24,7 @@ export function PrList({ prs, onSelect }: Props) {
               <td>{pr.number}</td>
               <td>{pr.title}</td>
               <td>{pr.author?.login ?? "—"}</td>
-              <td className="branch-cell">
-                {pr.headRefName && <span className="branch">{pr.headRefName}</span>}
-              </td>
+              <td className="branch-cell">{pr.headRefName && <span className="branch">{pr.headRefName}</span>}</td>
               <td>{pr.updatedAt ? new Date(pr.updatedAt).toLocaleDateString() : "—"}</td>
             </tr>
           ))}
