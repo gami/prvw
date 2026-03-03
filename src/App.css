@@ -302,6 +302,46 @@ body {
   color: var(--text-muted);
 }
 
+.pr-list-loading-more,
+.pr-list-end {
+  text-align: center;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pr-list-loading-more {
+  color: var(--accent);
+}
+
+/* ── PR Status Badges ── */
+.pr-badge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.pr-badge-draft {
+  color: #888;
+  border: 1px solid #888;
+}
+.pr-badge-approved {
+  color: #27ae60;
+  border: 1px solid #27ae60;
+}
+.pr-badge-changes {
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+}
+.pr-badge-review {
+  color: #f39c12;
+  border: 1px solid #f39c12;
+}
+
 /* ── 3-Pane Layout ── */
 .panes {
   flex: 1;

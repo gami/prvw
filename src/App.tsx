@@ -28,7 +28,7 @@ function App() {
   // ── Hooks ──
   const { repo, setRepo, repoHistory, persistRepo } = useRepoHistory();
 
-  const { prs, fetchPrs } = usePrList({
+  const { prs, fetchPrs, fetchMore, hasMore, loadingMore } = usePrList({
     repo,
     search,
     onFetched: (r) => {
@@ -122,7 +122,15 @@ function App() {
       {loading && <div className="loading-bar">{loading}</div>}
 
       {/* PR List (shown when no PR selected) */}
-      {!selectedPr && prs.length > 0 && <PrList prs={prs} onSelect={handleSelectPr} />}
+      {!selectedPr && prs.length > 0 && (
+        <PrList
+          prs={prs}
+          onSelect={handleSelectPr}
+          onLoadMore={fetchMore}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+        />
+      )}
 
       {/* 3-Pane Layout */}
       {selectedPr && (

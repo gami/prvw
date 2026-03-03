@@ -48,7 +48,8 @@ pub async fn list_prs(
         "--limit".to_string(),
         limit.to_string(),
         "--json".to_string(),
-        "number,title,author,updatedAt,url,headRefName,baseRefName,reviewDecision,body".to_string(),
+        "number,title,author,updatedAt,url,headRefName,baseRefName,reviewDecision,isDraft,body"
+            .to_string(),
     ];
 
     if let Some(s) = search {

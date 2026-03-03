@@ -23,6 +23,8 @@ pub struct PrListItem {
     #[serde(default)]
     pub review_decision: Option<String>,
     #[serde(default)]
+    pub is_draft: Option<bool>,
+    #[serde(default)]
     pub body: Option<String>,
 }
 
