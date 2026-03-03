@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { UNASSIGNED_GROUP_ID } from "../constants";
 import type { AnalysisResult, Hunk, IntentGroup } from "../types";
 import { GroupListItem } from "./GroupListItem";
@@ -47,6 +47,17 @@ export function GroupsPane({
   const loading = !!loadingMessage;
   const spinner = useSpinner(loading);
 
+  const reviewProgress = useMemo(() => {
+    if (!analysis) return null;
+    const total = hunks.length;
+    if (total === 0) return null;
+    const reviewedCount = analysis.groups
+      .filter((g) => reviewedGroups.has(g.id))
+      .reduce((sum, g) => sum + g.hunkIds.length, 0);
+    const pct = Math.round((reviewedCount / total) * 100);
+    return { reviewedCount, total, pct };
+  }, [analysis, hunks.length, reviewedGroups]);
+
   return (
     <div className="pane pane-left">
       <div className="pane-header">
@@ -79,8 +90,25 @@ export function GroupsPane({
       )}
       {analysis && (
         <div className="groups-list">
-          <div className={`group-item ${selectedGroupId === null ? "active" : ""}`} onClick={() => onSelectGroup(null)}>
+          <div
+            className={`group-item ${selectedGroupId === null ? "active" : ""}`}
+            style={{ alignItems: "center" }}
+            onClick={() => onSelectGroup(null)}
+          >
             <span className="group-title">All ({hunks.length} hunks)</span>
+            {reviewProgress && (
+              <span className="review-progress-wrap">
+                <span className="review-progress-bar">
+                  <span className="review-progress-fill" style={{ width: `${reviewProgress.pct}%` }} />
+                </span>
+                <span
+                  className="review-progress-label"
+                  style={reviewProgress.pct === 100 ? { color: "#fff" } : undefined}
+                >
+                  {reviewProgress.pct}%
+                </span>
+              </span>
+            )}
           </div>
           {analysis.groups.map((g) => (
             <GroupListItem

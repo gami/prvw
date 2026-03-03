@@ -116,7 +116,6 @@ pub async fn get_pr_diff(
             "-R",
             &repo,
             &pr_number.to_string(),
-            "--patch",
             "--color",
             "never",
         ])
