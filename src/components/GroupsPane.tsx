@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { UNASSIGNED_GROUP_ID } from "../constants";
 import type { AnalysisResult, Hunk, IntentGroup } from "../types";
 import { GroupListItem } from "./GroupListItem";
@@ -47,6 +47,17 @@ export function GroupsPane({
   const loading = !!loadingMessage;
   const spinner = useSpinner(loading);
 
+  const reviewProgress = useMemo(() => {
+    if (!analysis) return null;
+    const total = hunks.length;
+    if (total === 0) return null;
+    const reviewedCount = analysis.groups
+      .filter((g) => reviewedGroups.has(g.id))
+      .reduce((sum, g) => sum + g.hunkIds.length, 0);
+    const pct = Math.round((reviewedCount / total) * 100);
+    return { reviewedCount, total, pct };
+  }, [analysis, hunks.length, reviewedGroups]);
+
   return (
     <div className="pane pane-left">
       <div className="pane-header">
@@ -80,7 +91,14 @@ export function GroupsPane({
       {analysis && (
         <div className="groups-list">
           <div className={`group-item ${selectedGroupId === null ? "active" : ""}`} onClick={() => onSelectGroup(null)}>
-            <span className="group-title">All ({hunks.length} hunks)</span>
+            <span className="group-title">
+              All ({hunks.length} hunks{reviewProgress ? ` / ${reviewProgress.pct}% checked` : ""})
+            </span>
+            {reviewProgress && reviewProgress.pct > 0 && (
+              <div className="review-progress-bar">
+                <div className="review-progress-fill" style={{ width: `${reviewProgress.pct}%` }} />
+              </div>
+            )}
           </div>
           {analysis.groups.map((g) => (
             <GroupListItem
