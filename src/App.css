@@ -600,7 +600,7 @@ body {
 
 /* ── Diff View ── */
 .diff-view {
-  overflow-y: auto;
+  overflow: auto;
   flex: 1;
   padding: 0;
 }
@@ -651,6 +651,8 @@ body {
   font-family: inherit;
   font-size: 12px;
   line-height: 1.6;
+  width: fit-content;
+  min-width: 100%;
 }
 
 .diff-line {
