@@ -90,14 +90,21 @@ export function GroupsPane({
       )}
       {analysis && (
         <div className="groups-list">
-          <div className={`group-item ${selectedGroupId === null ? "active" : ""}`} onClick={() => onSelectGroup(null)}>
-            <span className="group-title">
-              All ({hunks.length} hunks{reviewProgress ? ` / ${reviewProgress.pct}% checked` : ""})
-            </span>
-            {reviewProgress && reviewProgress.pct > 0 && (
-              <div className="review-progress-bar">
-                <div className="review-progress-fill" style={{ width: `${reviewProgress.pct}%` }} />
-              </div>
+          <div
+            className={`group-item ${selectedGroupId === null ? "active" : ""}`}
+            style={{ alignItems: "center" }}
+            onClick={() => onSelectGroup(null)}
+          >
+            <span className="group-title">All ({hunks.length} hunks)</span>
+            {reviewProgress && (
+              <span className="review-progress-wrap">
+                <span className="review-progress-bar">
+                  <span className="review-progress-fill" style={{ width: `${reviewProgress.pct}%` }} />
+                </span>
+                <span className="review-progress-label" style={reviewProgress.pct === 100 ? { color: "#fff" } : undefined}>
+                  {reviewProgress.pct}%
+                </span>
+              </span>
             )}
           </div>
           {analysis.groups.map((g) => (
