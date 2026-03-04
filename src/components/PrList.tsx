@@ -22,6 +22,7 @@ export function PrList({ prs, onSelect, onLoadMore, hasMore, loadingMore }: Prop
       }
     }
     el.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
     return () => el.removeEventListener("scroll", handleScroll);
   }, [hasMore, loadingMore, onLoadMore]);
 
