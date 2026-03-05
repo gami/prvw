@@ -846,19 +846,7 @@ body {
 }
 
 /* ── Cache Badge ── */
-.cache-badge {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #27ae60;
-  border: 1px solid #27ae60;
-  padding: 1px 6px;
-  border-radius: 3px;
-}
-
 .cache-badge-btn {
-  position: relative;
   background: none;
   border: 1px solid #27ae60;
   border-radius: 3px;
