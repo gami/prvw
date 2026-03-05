@@ -925,15 +925,50 @@ body {
 }
 
 /* ── Cache Badge ── */
-.cache-badge {
+.cache-badge-btn {
+  background: none;
+  border: 1px solid #27ae60;
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  min-width: 52px;
+  text-align: center;
+}
+
+.cache-badge-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cache-badge-label,
+.cache-badge-reload {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.cache-badge-label {
   color: #27ae60;
-  border: 1px solid #27ae60;
-  padding: 1px 6px;
-  border-radius: 3px;
+}
+
+.cache-badge-reload {
+  display: none;
+  color: var(--accent);
+}
+
+.cache-badge-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.cache-badge-btn:hover:not(:disabled) .cache-badge-label {
+  display: none;
+}
+
+.cache-badge-btn:hover:not(:disabled) .cache-badge-reload {
+  display: inline;
 }
 
 /* ── Codex Log ── */
