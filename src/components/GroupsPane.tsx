@@ -64,7 +64,18 @@ export function GroupsPane({
         <div className="pane-header-row" style={{ display: "flex" }}>
           <h3>Intent Groups</h3>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            {fromCache && <span className="cache-badge">cached</span>}
+            {fromCache && (
+              <button
+                type="button"
+                className="cache-badge-btn"
+                onClick={() => onRunAnalysis(true)}
+                disabled={loading}
+                title="Re-run analysis (bypass cache)"
+              >
+                <span className="cache-badge-label">cached</span>
+                <span className="cache-badge-reload">reload</span>
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-accent"
