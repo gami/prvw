@@ -3,19 +3,23 @@ import { UNASSIGNED_GROUP_ID } from "../constants";
 import type { Hunk, IntentGroup } from "../types";
 import { classifyFile } from "../utils/classifyFile";
 import { getFileExtension } from "../utils/fileExtension";
+import { HunkDetailModal } from "./HunkDetailModal";
 
 interface Props {
   hunks: Hunk[];
   selectedGroup: IntentGroup | null;
   selectedGroupId: string | null;
   nonSubstantiveHunkIds: Set<string>;
+  model: string;
+  lang: string;
 }
 
-export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantiveHunkIds }: Props) {
+export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantiveHunkIds, model, lang }: Props) {
   const [hideTests, setHideTests] = useState(false);
   const [hiddenExts, setHiddenExts] = useState<Set<string>>(new Set());
   const [collapseCosmetic, setCollapseCosmetic] = useState(true);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
+  const [detailHunk, setDetailHunk] = useState<Hunk | null>(null);
 
   const allExtensions = useMemo(() => {
     const exts = new Set<string>();
@@ -136,12 +140,18 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
                 fileHunks.map((hunk) => {
                   const isCosmetic = nonSubstantiveHunkIds.has(hunk.id);
                   const cosmeticCollapsed = isCosmetic && collapseCosmetic;
+                  const hasAdds = hunk.lines.some((l) => l.kind === "add");
                   return (
                     <div key={hunk.id} className="hunk-block" style={cosmeticCollapsed ? { opacity: 0.5 } : undefined}>
                       <div className="hunk-header">
                         <span className={`hunk-id${isCosmetic ? " hunk-id-cosmetic" : ""}`}>{hunk.id}</span>
                         <span className="hunk-range">{hunk.header}</span>
                         {cosmeticCollapsed && <span className="cosmetic-badge">cosmetic</span>}
+                        {hasAdds && !cosmeticCollapsed && (
+                          <button type="button" className="btn-mini btn-explain" onClick={() => setDetailHunk(hunk)}>
+                            Deep Dive
+                          </button>
+                        )}
                       </div>
                       {!cosmeticCollapsed && (
                         <pre className="hunk-code">
@@ -165,6 +175,9 @@ export function DiffPane({ hunks, selectedGroup, selectedGroupId, nonSubstantive
         })}
         {hunks.length === 0 && <p className="hint">No diff loaded.</p>}
       </div>
+      {detailHunk && (
+        <HunkDetailModal hunk={detailHunk} model={model} lang={lang} onClose={() => setDetailHunk(null)} />
+      )}
     </div>
   );
 }

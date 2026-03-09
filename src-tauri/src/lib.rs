@@ -16,6 +16,8 @@ pub fn run() {
             diff_parser::parse_diff,
             codex::analyze_intents_with_codex,
             codex::refine_group,
+            codex::explain_hunk,
+            codex::ask_about_hunk,
             cache::get_cache_size,
             cache::clear_cache,
         ])

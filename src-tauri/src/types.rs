@@ -108,3 +108,20 @@ pub struct RefineResponse {
 pub struct RefineResult {
     pub groups: Vec<IntentGroup>,
 }
+
+/// Codex output shape for explain_hunk.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExplainResult {
+    pub explanation: String,
+}
+
+/// Response for explain_hunk command.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ExplainResponse {
+    pub explanation: String,
+    pub codex_log: String,
+    #[serde(default)]
+    pub from_cache: bool,
+}

@@ -154,6 +154,8 @@ function App() {
             selectedGroup={selectedGroup}
             selectedGroupId={selectedGroupId}
             nonSubstantiveHunkIds={nonSubstantiveHunkIds}
+            model={codexModel}
+            lang={lang}
           />
           <SummaryPane
             selectedPr={selectedPr}
