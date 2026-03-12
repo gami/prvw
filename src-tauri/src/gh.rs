@@ -130,12 +130,17 @@ pub async fn get_pr_diff(
             }
         })?;
 
-    if !output.status.success() {
+    let diff = if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("gh pr diff failed: {}", stderr));
-    }
-
-    let diff = String::from_utf8_lossy(&output.stdout).to_string();
+        if stderr.contains("too_large") || stderr.contains("HTTP 406") {
+            // Diff too large for GitHub API — fall back to git diff via local clone
+            get_pr_diff_via_git(&repo, pr_number)?
+        } else {
+            return Err(format!("gh pr diff failed: {}", stderr));
+        }
+    } else {
+        String::from_utf8_lossy(&output.stdout).to_string()
+    };
     if diff.trim().is_empty() {
         return Err("Diff is empty. The PR may have no changes.".to_string());
     }
@@ -146,6 +151,98 @@ pub async fn get_pr_diff(
     }
 
     Ok(diff)
+}
+
+/// Fallback: fetch PR branch refs via gh, then use git diff against a local clone.
+fn get_pr_diff_via_git(repo: &str, pr_number: u32) -> Result<String, String> {
+    // Get head and base branch names from the PR metadata
+    let meta_output = Command::new("gh")
+        .args([
+            "pr",
+            "view",
+            "-R",
+            repo,
+            &pr_number.to_string(),
+            "--json",
+            "headRefName,baseRefName",
+        ])
+        .envs(gh_env())
+        .output()
+        .map_err(|e| format!("Failed to execute gh pr view: {}", e))?;
+
+    if !meta_output.status.success() {
+        let stderr = String::from_utf8_lossy(&meta_output.stderr);
+        return Err(format!("gh pr view failed: {}", stderr));
+    }
+
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct PrMeta {
+        head_ref_name: String,
+        base_ref_name: String,
+    }
+
+    let meta: PrMeta = serde_json::from_slice(&meta_output.stdout)
+        .map_err(|e| format!("Failed to parse PR metadata: {}", e))?;
+
+    // Clone (shallow, bare) into a temp dir and diff
+    let temp_dir = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {}", e))?;
+    let clone_path = temp_dir.path().join("repo");
+
+    let clone_status = Command::new("gh")
+        .args([
+            "repo",
+            "clone",
+            repo,
+            clone_path
+                .to_str()
+                .ok_or_else(|| "Non-UTF-8 temp path".to_string())?,
+            "--",
+            "--bare",
+            "--filter=blob:none",
+        ])
+        .envs(gh_env())
+        .status()
+        .map_err(|e| format!("Failed to clone repo: {}", e))?;
+
+    if !clone_status.success() {
+        return Err("Failed to clone repository for large diff fallback.".to_string());
+    }
+
+    let clone_str = clone_path
+        .to_str()
+        .ok_or_else(|| "Non-UTF-8 clone path".to_string())?;
+
+    // Fetch both branches explicitly (bare clone may not have all refs)
+    let _ = Command::new("git")
+        .args([
+            "-C",
+            clone_str,
+            "fetch",
+            "origin",
+            &format!(
+                "+refs/heads/{}:refs/heads/{} +refs/heads/{}:refs/heads/{}",
+                meta.base_ref_name, meta.base_ref_name, meta.head_ref_name, meta.head_ref_name
+            ),
+        ])
+        .output();
+
+    let diff_output = Command::new("git")
+        .args([
+            "-C",
+            clone_str,
+            "diff",
+            &format!("{}...{}", meta.base_ref_name, meta.head_ref_name),
+        ])
+        .output()
+        .map_err(|e| format!("git diff failed: {}", e))?;
+
+    if !diff_output.status.success() {
+        let stderr = String::from_utf8_lossy(&diff_output.stderr);
+        return Err(format!("git diff failed for large PR: {}", stderr));
+    }
+
+    Ok(String::from_utf8_lossy(&diff_output.stdout).to_string())
 }
 
 #[cfg(test)]

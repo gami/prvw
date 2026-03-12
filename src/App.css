@@ -460,7 +460,7 @@ body {
 }
 
 .btn-mini:hover {
-  color: var(--text);
+  color: var(--accent);
   border-color: var(--accent);
 }
 
@@ -849,6 +849,13 @@ body {
 .summary-card-body section:last-child {
   margin-bottom: 0;
 }
+.summary-card-body code {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
 
 .summary-content h4 {
   font-size: 12px;
@@ -969,6 +976,146 @@ body {
 
 .cache-badge-btn:hover:not(:disabled) .cache-badge-reload {
   display: inline;
+}
+
+/* ── Deep Dive Button ── */
+.btn-explain {
+  margin-left: auto;
+  font-size: 10px;
+}
+
+/* ── Hunk Detail Modal ── */
+.hunk-detail-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.hunk-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.hunk-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.hunk-detail-file {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hunk-detail-ext {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.hunk-detail-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.hunk-detail-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+.hunk-detail-code {
+  flex: 7;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+}
+.hunk-detail-code .hunk-code-detail {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--bg-surface);
+}
+.hunk-detail-code .diff-add-highlight {
+  background: rgba(46, 160, 67, 0.12);
+}
+.hunk-detail-explain {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.hunk-detail-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+.hunk-msg-question {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  margin: 10px 0 6px;
+  color: var(--text);
+}
+.hunk-detail-input {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+}
+.hunk-detail-input input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+}
+.hunk-detail-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.hunk-detail-input .btn {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+.hunk-detail-explanation {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.hunk-detail-explanation h1,
+.hunk-detail-explanation h2,
+.hunk-detail-explanation h3 {
+  font-size: 14px;
+  margin: 12px 0 4px;
+}
+.hunk-detail-explanation p {
+  margin: 6px 0;
+}
+.hunk-detail-explanation ul,
+.hunk-detail-explanation ol {
+  padding-left: 20px;
+  margin: 6px 0;
+}
+.hunk-detail-explanation code {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
 }
 
 /* ── Codex Log ── */

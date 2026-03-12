@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AnalysisResponse, Hunk, IntentGroup, RefineResponse } from "../types";
+import type { AnalysisResponse, ExplainResponse, Hunk, IntentGroup, RefineResponse } from "../types";
 
 export async function analyzeIntents(
   hunks: Hunk[],
@@ -32,5 +32,37 @@ export async function refineGroupApi(
     model: model.trim() || null,
     lang: lang.trim() || null,
     force: force ?? false,
+  });
+}
+
+export async function explainHunkApi(
+  hunk: Hunk,
+  model: string,
+  lang: string,
+  force?: boolean,
+): Promise<ExplainResponse> {
+  return invoke<ExplainResponse>("explain_hunk", {
+    hunkJson: JSON.stringify(hunk),
+    filePath: hunk.filePath,
+    model: model.trim() || null,
+    lang: lang.trim() || null,
+    force: force ?? false,
+  });
+}
+
+export async function askAboutHunkApi(
+  hunk: Hunk,
+  question: string,
+  context: string,
+  model: string,
+  lang: string,
+): Promise<ExplainResponse> {
+  return invoke<ExplainResponse>("ask_about_hunk", {
+    hunkJson: JSON.stringify(hunk),
+    filePath: hunk.filePath,
+    question,
+    context,
+    model: model.trim() || null,
+    lang: lang.trim() || null,
   });
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import Markdown from "react-markdown";
 import { useTruncationTooltip } from "../hooks/useTruncationTooltip";
 import type { AnalysisResult, IntentGroup, PrListItem } from "../types";
 
@@ -40,7 +41,7 @@ export function SummaryPane({ selectedPr, analysis, selectedGroup, codexLog, onO
           <div className="summary-card">
             <div className="summary-card-header">Summary</div>
             <div className="summary-card-body">
-              <p>{analysis.overallSummary}</p>
+              <Markdown>{analysis.overallSummary}</Markdown>
             </div>
           </div>
 
@@ -52,7 +53,7 @@ export function SummaryPane({ selectedPr, analysis, selectedGroup, codexLog, onO
                 <>
                   <section>
                     <h4>Rationale</h4>
-                    <p>{selectedGroup.rationale}</p>
+                    <Markdown>{selectedGroup.rationale}</Markdown>
                   </section>
                   {selectedGroup.reviewerChecklist.length > 0 && (
                     <section>

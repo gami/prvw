@@ -71,3 +71,9 @@ export interface RefineResponse {
   codexLog: string;
   fromCache: boolean;
 }
+
+export interface ExplainResponse {
+  explanation: string;
+  codexLog: string;
+  fromCache: boolean;
+}

@@ -2,11 +2,15 @@ use std::collections::HashSet;
 
 use crate::cache;
 use crate::codex_runner::{self, lang_suffix};
-use crate::types::{AnalysisResponse, AnalysisResult, Hunk, RefineResponse, RefineResult};
+use crate::types::{
+    AnalysisResponse, AnalysisResult, ExplainResponse, ExplainResult, Hunk, RefineResponse,
+    RefineResult,
+};
 use crate::validation::validate_analysis;
 
 const ANALYSIS_SCHEMA: &str = include_str!("../schemas/analysis.json");
 const REFINE_SCHEMA: &str = include_str!("../schemas/refine.json");
+const EXPLAIN_SCHEMA: &str = include_str!("../schemas/explain.json");
 
 fn build_analysis_prompt(
     hunk_count: usize,
@@ -34,7 +38,12 @@ fn build_analysis_prompt(
          (e.g. data model / schema first, then business logic, then API / controller, then UI, then tests, then config). \
          Give each group a clear, descriptive title that serves as a section heading for reviewers. \
          Assign each group a category from: schema, logic, api, ui, test, config, docs, refactor, other. \
-         For overallSummary, write a concise reviewer-facing summary of WHAT the PR changes and WHY. \
+         For overallSummary, write a structured reviewer-facing summary in this format: \
+         First line: a single sentence stating WHAT the PR changes and WHY (keep it short). \
+         Then a blank line (\"\\n\\n\"), followed by bullet points (each starting with \"- \") listing each key change, one per line. \
+         Rules for bullets: one change per bullet, keep each bullet under 80 characters, \
+         use noun phrases (no trailing verbs like \"〜している\"), \
+         include only 1-2 key identifiers per bullet (the most important function or type name) — do NOT exhaustively list every touched symbol. \
          Do NOT mention hunks, hunks.json, grouping process, or analysis internals — write as if summarizing the PR itself. \
          Also classify each hunk as substantive or non-substantive. \
          Non-substantive changes are: formatting/whitespace-only changes, code moved to another file without modification, \
@@ -293,6 +302,164 @@ pub async fn refine_group(
     Ok(response)
 }
 
+fn build_explain_prompt(file_path: &str, lang: &Option<String>) -> String {
+    format!(
+        "Read hunk.json which contains a single code hunk from the file \"{}\". \
+         Explain this change for a code reviewer. Your explanation (in markdown) must cover: \
+         1. **What changed** — describe the concrete code change in a few sentences. \
+         2. **Intent** — why this change was likely made. \
+         3. **Impact** — what behavior or logic is affected, and any potential risks. \
+         Keep it concise and reviewer-focused. Use inline code (backticks) for identifiers.{}",
+        file_path,
+        lang_suffix(lang)
+    )
+}
+
+#[tauri::command]
+pub async fn explain_hunk(
+    app: tauri::AppHandle,
+    hunk_json: String,
+    file_path: String,
+    model: Option<String>,
+    lang: Option<String>,
+    force: Option<bool>,
+) -> Result<ExplainResponse, String> {
+    use tauri::Manager;
+
+    let app_data_dir = app.path().app_data_dir().ok();
+    let model_str = model.as_deref().unwrap_or("");
+    let lang_str = lang.as_deref().unwrap_or("");
+    let cache_key = cache::hash_key(&format!("{}\n{}\n{}", hunk_json, model_str, lang_str));
+
+    if force != Some(true) {
+        if let Some(ref dir) = app_data_dir {
+            if let Some(mut cached) =
+                cache::read_cache::<ExplainResponse>(dir, "cache/explain", &cache_key)
+            {
+                cached.from_cache = true;
+                return Ok(cached);
+            }
+        }
+    }
+
+    let (temp_dir, schema_path, output_path) =
+        codex_runner::prepare_temp_dir(&hunk_json, EXPLAIN_SCHEMA, "explain.json")?;
+
+    // Rename hunks.json → hunk.json for clarity in the prompt
+    let temp_path = temp_dir.path();
+    std::fs::rename(temp_path.join("hunks.json"), temp_path.join("hunk.json"))
+        .map_err(|e| format!("Failed to rename temp file: {}", e))?;
+
+    let prompt = build_explain_prompt(&file_path, &lang);
+
+    let args = codex_runner::build_args(
+        temp_path,
+        schema_path
+            .to_str()
+            .ok_or_else(|| "Non-UTF-8 schema path".to_string())?,
+        output_path
+            .to_str()
+            .ok_or_else(|| "Non-UTF-8 output path".to_string())?,
+        &model,
+        prompt,
+    )?;
+
+    let codex_output = codex_runner::run(&args)?;
+
+    let result_str = std::fs::read_to_string(&output_path).map_err(|e| {
+        format!(
+            "Failed to read explain.json: {}. Codex may not have produced output.",
+            e
+        )
+    })?;
+
+    let result: ExplainResult = serde_json::from_str(&result_str)
+        .map_err(|e| format!("Failed to parse explain.json: {}", e))?;
+
+    let log = codex_runner::build_log("explain", &codex_output);
+
+    let response = ExplainResponse {
+        explanation: result.explanation,
+        codex_log: log,
+        from_cache: false,
+    };
+
+    if let Some(ref dir) = app_data_dir {
+        cache::write_cache(dir, "cache/explain", &cache_key, &response);
+    }
+
+    Ok(response)
+}
+
+fn build_ask_prompt(
+    file_path: &str,
+    question: &str,
+    context: &str,
+    lang: &Option<String>,
+) -> String {
+    format!(
+        "Read hunk.json which contains a single code hunk from the file \"{}\". \
+         A reviewer has already received this analysis:\n\n{}\n\n\
+         The reviewer now asks: \"{}\"\n\n\
+         Answer the question concisely in markdown. Use inline code (backticks) for identifiers.{}",
+        file_path,
+        context,
+        question,
+        lang_suffix(lang)
+    )
+}
+
+#[tauri::command]
+pub async fn ask_about_hunk(
+    hunk_json: String,
+    file_path: String,
+    question: String,
+    context: String,
+    model: Option<String>,
+    lang: Option<String>,
+) -> Result<ExplainResponse, String> {
+    let (temp_dir, schema_path, output_path) =
+        codex_runner::prepare_temp_dir(&hunk_json, EXPLAIN_SCHEMA, "ask.json")?;
+
+    let temp_path = temp_dir.path();
+    std::fs::rename(temp_path.join("hunks.json"), temp_path.join("hunk.json"))
+        .map_err(|e| format!("Failed to rename temp file: {}", e))?;
+
+    let prompt = build_ask_prompt(&file_path, &question, &context, &lang);
+
+    let args = codex_runner::build_args(
+        temp_path,
+        schema_path
+            .to_str()
+            .ok_or_else(|| "Non-UTF-8 schema path".to_string())?,
+        output_path
+            .to_str()
+            .ok_or_else(|| "Non-UTF-8 output path".to_string())?,
+        &model,
+        prompt,
+    )?;
+
+    let codex_output = codex_runner::run(&args)?;
+
+    let result_str = std::fs::read_to_string(&output_path).map_err(|e| {
+        format!(
+            "Failed to read ask.json: {}. Codex may not have produced output.",
+            e
+        )
+    })?;
+
+    let result: ExplainResult = serde_json::from_str(&result_str)
+        .map_err(|e| format!("Failed to parse ask.json: {}", e))?;
+
+    let log = codex_runner::build_log("ask", &codex_output);
+
+    Ok(ExplainResponse {
+        explanation: result.explanation,
+        codex_log: log,
+        from_cache: false,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -322,7 +489,7 @@ mod tests {
         let body = Some("x".repeat(3000));
         let prompt = build_analysis_prompt(1, &body, &None);
         // The body in the prompt should be truncated to ~2000 chars
-        assert!(prompt.len() < 3000 + 500);
+        assert!(prompt.len() < 3000 + 800);
         assert!(prompt.contains("PR description"));
     }
 
