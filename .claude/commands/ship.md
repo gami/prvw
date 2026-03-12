@@ -25,6 +25,7 @@ Run `npm run test` (cargo test + vitest). All tests must pass. If tests fail, fi
 
 ## 5. Push
 
+- Check if the current branch already has a PR (`gh pr view`). If it's open, ask the user whether to add to the existing PR or create a new branch for a separate PR. If it's merged, create a new branch from main.
 - If on `main`, create a new branch first with a descriptive name
 - Push with `-u` to set upstream
 
